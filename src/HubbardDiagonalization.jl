@@ -701,17 +701,13 @@ function export_observable_data(
                         continue
                     end
                     data = indexer(csv_index, csv_overlay_data[csv_overlay_name])
-                    # Filter out similar data points to prevent the plot from getting too crowded
-                    filtered_indices =
-                        CSVUtil.indices_excluding_similar_data(data, 0.02, 0.01)
-                    figure = scatter!(
+                    filtered_indices = 1:length(x_overlay_axis)
+                    figure = plot!(
                         figure,
                         x_overlay_axis[filtered_indices],
                         data[filtered_indices],
                         labels = "$(csv_overlay_name) (CSV Overlay)",
-                        # Some styling to make the plots nicer
-                        ms = 4,
-                        ma = 0.5,
+                        linestyle = :dash,
                     )
                 end
             end
