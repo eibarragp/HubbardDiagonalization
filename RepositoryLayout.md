@@ -10,7 +10,7 @@ Here is a basic overview of the project layout.
   |- src/                   # Main project source files
   | |- CSVUtil.jl                 # Utility functions for working with CSV (and ZIP) files.
   | |- Graphs.jl                  # Defines a basic undirected graph structure and some common graph types.
-  | |- HubbardDiagonalization.jl  # Entrypoint and main logic
+  | |- HubbardDiagonalization.jl  # Entry point and main logic
   | |- StateEnumeration.jl        # Helper functions for enumerating states under various constraints
   | \- SymmetricMatrices.jl       # Defines a SymmetricMatrix type that stores only the lower-triangular part of the matrix.
   \- tests/                 # Test files

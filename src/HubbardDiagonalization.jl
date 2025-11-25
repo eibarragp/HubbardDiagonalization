@@ -204,6 +204,62 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
                 B * (energy(B, u) - (u + (U/2) * (num_colors - 1)) * rho(B, u))
     end
 
+    
+    # Calculating the spin-spin correlation function / number correlation:
+    #   C = sum_{σ≠τ} [ <n(i,σ)n(j,σ)> - <n(i,σ)n(j,τ)> ]
+    # Defining observable:
+    observables["C_spin"] =
+        state -> begin
+            num_edges = 0
+            total = 0.0
+
+            # Iterating over the edge pairs (nearest neighbor pairs) in the graph 
+            for (i, j) in Graphs.edges(graph)
+                # Keep track of the edges (nearest neighbors) to average over later
+                num_edges += 1
+                same_color = 0
+                diff_color = 0
+
+                # if they are the same color
+                # n(i,σ)n(j,σ)
+                for σ in 1:num_colors
+
+                    # finding the occupancy at the state (represented by a bitmask)
+                    niσ = (state[σ] >> (i - 1)) & 1
+                    njσ = (state[σ] >> (j - 1)) & 1
+
+                    #contributes 1 if there is a spin up up or a spin down down at i and j
+                    same_color += niσ * njσ
+                    
+
+                end
+
+                # if diffeent colors
+                # n(i,σ)n(j,τ), σ ≠ τ
+                for σ in 1:num_colors
+
+                    #f inding the occupancy at the state 
+                    niσ = (state[σ] >> (i - 1)) & 1
+
+                    # looping over the possible other colors
+                    for τ in 1:num_colors
+                        if σ == τ; continue; end
+                        njτ = (state[τ] >> (j - 1)) & 1
+                        # contributes non-zero only if the two sites have different spins
+                        diff_color += niσ * njτ
+                    end
+                end
+
+                # finding the total contribution
+                # positive if both neighbors have the same spins (up up, down down)
+                # negatie if both neighbors have different spins (up down, down up)
+                total += (same_color - diff_color)
+            end
+            # return average
+            return num_edges == 0 ? 0.0 : total / ( num_edges)
+        end
+
+
     return observables, derived_observables, overlays
 end
 
