@@ -1,4 +1,4 @@
-.PHONY: clean debug default format repl run setup test_n2
+.PHONY: clean debug default format repl run setup test_grids
 
 default: run
 
