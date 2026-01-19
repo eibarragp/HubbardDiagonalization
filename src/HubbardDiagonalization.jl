@@ -204,7 +204,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
                 B * (energy(B, u) - (u + (U/2) * (num_colors - 1)) * rho(B, u))
     end
 
-    
+
     # Calculating the spin-spin correlation function / number correlation:
     #   C = sum_{σ≠τ} [ <n(i,σ)n(j,σ)> - <n(i,σ)n(j,τ)> ]
     # Defining observable:
@@ -213,7 +213,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
             num_edges = 0
             total = 0.0
 
-            # Iterating over the edge pairs (nearest neighbor pairs) in the graph 
+            # Iterating over the edge pairs (nearest neighbor pairs) in the graph
             for (i, j) in Graphs.edges(graph)
                 # Keep track of the edges (nearest neighbors) to average over later
                 num_edges += 1
@@ -230,7 +230,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
 
                     #contributes 1 if there is a spin up up or a spin down down at i and j
                     same_color += niσ * njσ
-                    
+
 
                 end
 
@@ -238,7 +238,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
                 # n(i,σ)n(j,τ), σ ≠ τ
                 for σ in 1:num_colors
 
-                    #f inding the occupancy at the state 
+                    #f inding the occupancy at the state
                     niσ = (state[σ] >> (i - 1)) & 1
 
                     # looping over the possible other colors
@@ -570,9 +570,7 @@ function diagonalize_and_compute_observables(
         # This makes corrected_weights a matrix with indexing [state, temp]
         corrected_weights = @. exp(correction_exponents) * weights
 
-        # Compute the partition function
-        # Here, the .* multiplies (dot-products) each column of corrected_weights by weights
-        # Then, sum over all the values in each column to get a vector of partition functions for each temperature
+        # Sum over all the values in each column to get a vector of partition functions for each temperature
         Z = sum(corrected_weights, dims = 1)
 
         @debug begin
@@ -592,12 +590,11 @@ function diagonalize_and_compute_observables(
                 # The expectation value of the Hamiltonian depends on u, so we have to shift it here
                 internal_energy_values =
                     (-u_datapoint_shift * n_fermion_data) .+ observable_values
-                # Put internal_energy_values into a tuple so broadcasting works correctly
                 internal_energy_expectations =
                     sum(corrected_weights .* internal_energy_values; dims = 1)
                 normalized_internal_energy_expectations = internal_energy_expectations ./ Z
                 entropy_expectation =
-                    @. normalized_internal_energy_expectations * B' + log.(Z)
+                    @. normalized_internal_energy_expectations * B' + log(Z)
                 computed_observable_values["Entropy"][:, i] = entropy_expectation
                 @debug begin
                     "  Entropy: $entropy_expectation (Internal Energy Values: $internal_energy_values Internal Energy Expectation: $normalized_internal_energy_expectations)"
@@ -610,7 +607,6 @@ function diagonalize_and_compute_observables(
             end
 
             # Compute the expectation value of each observable
-            # Put internal_energy_values into a tuple so broadcasting works correctly
             expectation_values = sum(corrected_weights .* observable_values; dims = 1)
             normalized_expectation_values = expectation_values ./ Z
 
