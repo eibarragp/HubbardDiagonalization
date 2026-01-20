@@ -698,10 +698,14 @@ function export_observable_data(
         end
 
         # Find the indices corresponding to the fixed value
-        index = CSVUtil.find_index(fixed_axis, fixed_value, fixed_value_name, true)
+        index = CSVUtil.find_index(fixed_axis, fixed_value, fixed_value_name)
+        if index == -1
+            @warn "Fixed value $fixed_value_name=$fixed_value not found in computed data; skipping plot."
+            return
+        end
         csv_index =
             @isdefined(csv_overlay_data) ?
-            CSVUtil.find_index(fixed_overlay_axis, fixed_value, fixed_value_name, false) :
+            CSVUtil.find_index(fixed_overlay_axis, fixed_value, fixed_value_name) :
             # If no CSV data was loaded, just say we didn't find the axis
             -1
 

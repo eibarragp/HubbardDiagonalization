@@ -125,23 +125,19 @@ function load_overlay_data(
 end
 
 """
-    find_index(arr::AbstractVector{Float64}, val::Float64, var_name::String, warn_on_missing::Bool, atol::Float64 = 1e-8)
+    find_index(arr::AbstractVector{Float64}, val::Float64, var_name::String, atol::Float64 = 1e-8)
 
 A helper function to find the index of a value in an array, asserting that it only appears once.
-If the value is not found, returns -1 and optionally warns. If the value appears multiple times, warns and returns the first index.
+If the value is not found, returns -1. If the value appears multiple times, warns and returns the first index.
 """
 function find_index(
     arr::AbstractVector{Float64},
     val::Float64,
     var_name::String,
-    warn_on_missing::Bool,
     atol::Float64 = 1e-8,
 )
     indices = findall(x -> isapprox(x, val; atol = atol), arr)
     if length(indices) == 0
-        if warn_on_missing
-            @warn "$var_name=$val not found in T_vals; skipping fixed-T plot."
-        end
         return -1
     elseif length(indices) > 1
         @warn "Multiple values found for $var_name=$val; using first index."
