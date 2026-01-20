@@ -120,6 +120,27 @@ function (@main)(args)
 end
 
 """
+    count_double_occupancies(state::Vector{Int}, num_colors::Int) -> Int
+
+Counts the number of double occupancies in a given basis state.
+"""
+function count_double_occupancies(state::Vector{Int}, num_colors::Int) :: Int
+    total = 0
+    # Consider two colors at a time to interact
+    for color_pair in enumerate_states(num_colors, 2)
+        # Get indicies of the colors
+        first_color = trailing_zeros(color_pair)
+        second_color = trailing_zeros(color_pair ⊻ (1 << first_color))  # leading_zeros would depend on the bit-width, so we can't use it
+        # Correct for 1-based indexing
+        first_color += 1
+        second_color += 1
+        # The number of double occupancies is the number of bits set on both colors
+        total += count_ones(state[first_color] & state[second_color])
+    end
+    return total
+end
+
+"""
     default_observables(test_config::TestConfiguration, graph::Graph)
 
 Defines the "standard" set of observables to compute for the Hubbard model.
@@ -137,23 +158,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
 
     observables["Num_Particles"] = state -> sum(count_ones(color) for color in state)
     observables["Filled States"] = state -> count_ones(reduce(&, state))
-    observables["Double Occupancies"] =
-        state -> begin
-            total = 0
-            for color_pair in enumerate_states(num_colors, 2)  # Stolen from interaction term code below
-                color_mask = digits(color_pair, base = 2, pad = num_colors)
-                # Set bits for colors **not** in the interaction to 1
-                color_mask = 1 .- color_mask
-                # For all colors not in the interaction, set all bits to 1 (mark all sites as occupied)
-                filled_mask = ((2 ^ num_sites) - 1)  # Mask with all bits set to 1
-                color_mask = color_mask * filled_mask  # 1 -> (111...1), 0 -> 0
-                occupied_sites = state .| color_mask
-                # Take the bitwise AND across all colors to find sites occupied by both colors
-                occupied_sites = reduce(&, occupied_sites)
-                total += count_ones(occupied_sites)
-            end
-            return total
-        end
+    observables["Double Occupancies"] = state -> count_double_occupancies(state, num_colors)
 
     observables["Energy"] = _ -> 0.0  # Will be handled specially
 
@@ -376,24 +381,7 @@ function diagonalize_and_compute_observables(
                 end
                 if i == j  # Because enumerate_multistate is consistent, if the indices are equal, the states are equal
                     # Diagonal element
-                    H[i, i] = -u_test * N_fermions
-
-                    # Interaction term
-                    # Consider two colors at a time to interact
-                    for interacting_colors in enumerate_states(num_colors, 2)
-                        # Count number of pairs of fermions on the same site
-                        color_mask = digits(interacting_colors, base = 2, pad = num_colors)
-                        # Set bits for colors **not** in the interaction to 1
-                        color_mask = 1 .- color_mask
-                        # For all colors not in the interaction, set all bits to 1 (mark all sites as occupied)
-                        filled_mask = ((2 ^ num_sites) - 1)  # Mask with all bits set to 1
-                        color_mask = color_mask * filled_mask  # 1 -> (111...1), 0 -> 0
-                        occupied_sites = state_i .| color_mask
-                        # Take the bitwise AND across all colors to find sites occupied by both colors
-                        occupied_sites = reduce(&, occupied_sites)
-                        # Add interaction energy for each pair of fermions on the same site
-                        H[i, i] += U * count_ones(occupied_sites)
-                    end
+                    H[i, i] = -u_test * N_fermions + U * count_double_occupancies(state_i, num_colors)
 
                     break  # No need to compute upper-triangular elements
                 else
@@ -427,10 +415,11 @@ function diagonalize_and_compute_observables(
                     end
 
                     # Get the sites involved in the hop
-                    # TODO: I wrote this this way because it was readable, but I bet we could optimize this out to a function that just does bit-manipulation rather than converting to arrays
-                    hopped_sites = digits(diff[hopped_color], base = 2, pad = num_sites)
-                    site_1 = findfirst(isequal(1), hopped_sites)
-                    site_2 = findlast(isequal(1), hopped_sites)
+                    site_1 = trailing_zeros(diff[hopped_color])
+                    site_2 = trailing_zeros(diff[hopped_color] ⊻ (1 << site_1))  # leading_zeros would depend on the bit-width, so we can't use it
+                    # Correct for 1-based indexing
+                    site_1 += 1
+                    site_2 += 1
                     @assert site_1 != site_2
 
                     @debug begin
