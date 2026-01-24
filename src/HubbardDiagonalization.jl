@@ -682,6 +682,10 @@ function export_observable_data(
             x_axis_name = "u"       # x-axis label
             x_axis = u_vals         # x-axis values for the generated data
             indexer = (index, data) -> data[index, :]  # Function to index into the data matrices
+            if @isdefined(csv_overlay_data)
+                fixed_overlay_axis = csv_overlay_T_vals  # Value array for the fixed variable (to get the index in the CSV data)
+                x_overlay_axis = csv_overlay_u_vals  # x-axis values for the CSV data
+            end
         elseif fixed_value_type == :u
             # Same as above, but altered for fixed u
             fixed_value_name = "u"
@@ -689,6 +693,10 @@ function export_observable_data(
             x_axis = T_vals
             x_axis_name = "T"
             indexer = (index, data) -> data[:, index]
+            if @isdefined(csv_overlay_data)
+                fixed_overlay_axis = csv_overlay_u_vals
+                x_overlay_axis = csv_overlay_T_vals
+            end
         else
             error("Invalid fixed_value_type: $fixed_value_type")
         end
@@ -704,18 +712,6 @@ function export_observable_data(
             CSVUtil.find_index(fixed_overlay_axis, fixed_value, fixed_value_name) :
             # If no CSV data was loaded, just say we didn't find the axis
             -1
-
-        # If we have CSV data, set up the axes for those too
-        if csv_index != -1
-            if fixed_value_type == :T
-                fixed_overlay_axis = csv_overlay_T_vals  # Value array for the fixed variable (to get the index in the CSV data)
-                x_overlay_axis = csv_overlay_u_vals  # x-axis values for the CSV data
-            elseif fixed_value_type == :u
-                # Same as above, but altered for fixed u
-                fixed_overlay_axis = csv_overlay_u_vals
-                x_overlay_axis = csv_overlay_T_vals
-            end
-        end
 
         # Array to store the subplots
         figures = []
