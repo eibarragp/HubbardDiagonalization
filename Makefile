@@ -16,7 +16,7 @@ repl:
 	@julia --project=.
 
 run:
-	@julia --project=. -e 'include("src/HubbardDiagonalization.jl"); using
+	@julia --project=. -e 'include("src/HubbardDiagonalization.jl"); using .HubbardDiagonalization'
 
 setup:
 	@julia --project=. -e 'import Pkg; Pkg.instantiate()'
