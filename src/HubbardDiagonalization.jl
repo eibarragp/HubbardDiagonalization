@@ -381,7 +381,9 @@ function diagonalize_and_compute_observables(
                 end
                 if i == j  # Because enumerate_multistate is consistent, if the indices are equal, the states are equal
                     # Diagonal element
-                    H[i, i] = -u_test * N_fermions + U * count_double_occupancies(state_i, num_colors)
+                    H[i, i] =
+                        -u_test * N_fermions +
+                        U * count_double_occupancies(state_i, num_colors)
 
                     break  # No need to compute upper-triangular elements
                 else
