@@ -27,6 +27,7 @@ function (@main)(args)
         "Double Occupancies" => "Doubleoccupancies.csv",
         "Energy" => "Energies.csv",
         "Entropy" => "Entropies.csv",
+        "C_spin" => "CNNs.csv",
     )
 
     if !warn_on_nan
@@ -230,6 +231,11 @@ function run_test_set!(
         # Energy and Entropy are normalized by the number of sites
         if observable_name == "Energy" || observable_name == "Entropy"
             computed ./= Graphs.num_sites(graph)
+        end
+
+        # Provided correlation data is scaled by a factor of 2
+        if observable_name == "C_spin"
+            expected .*= 2
         end
 
         # Compute some statistics
