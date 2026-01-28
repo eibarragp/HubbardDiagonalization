@@ -231,8 +231,8 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
                 niσ = (state[σ] >> (i - 1)) & 1
                 njσ = (state[σ] >> (j - 1)) & 1
 
-                #contributes 1 if there is a spin up up or a spin down down at i and j
-                same_color += niσ * njσ
+                #contributes (num_colors - 1) if there is a spin up up or a spin down down at i and j
+                same_color += niσ * njσ * (num_colors - 1)
             end
 
             # if different colors
