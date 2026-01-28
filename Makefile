@@ -7,7 +7,7 @@ clean:
 
 debug:
 	@mkdir -p output
-	@julia --project=. -m HubbardDiagonalization --debug 2>&1 | tee output/debug.log
+	@julia --project=. -e 'include("src/HubbardDiagonalization.jl"); using .HubbardDiagonalization; main("--debug")' 2>&1 | tee output/debug.log
 
 format:
 	@julia --project=. -e 'import JuliaFormatter; JuliaFormatter.format("."; always_for_in = true)'
@@ -16,7 +16,7 @@ repl:
 	@julia --project=.
 
 run:
-	@julia --project=. -m HubbardDiagonalization
+	@julia --project=. -e 'include("src/HubbardDiagonalization.jl"); using
 
 setup:
 	@julia --project=. -e 'import Pkg; Pkg.instantiate()'

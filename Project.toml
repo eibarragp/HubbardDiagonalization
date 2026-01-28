@@ -16,7 +16,7 @@ ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 [compat]
 CSV = "0.10.15"
 JuliaFormatter = "2.2.0"
-LinearAlgebra = "1.12.0"
+LinearAlgebra = "^1.11.7"
 Plots = "1.41.1"
 TOML = "1.0.3"
 UnicodePlots = "3.8.1"
