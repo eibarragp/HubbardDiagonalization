@@ -5,9 +5,11 @@ using HubbardDiagonalization:
 	ExactDiagonalization as ED
 
 import CSV
+import JSON3 as JSON
 import Logging
 import TOML
 
+using ArgParse
 using Base.Threads
 
 # Set up plotting backend
@@ -18,17 +20,27 @@ if use_unicode_plots
     unicodeplots()
 end
 
-"""
-    convert_strings_to_symbols(dict::Dict{String,Any}) -> Dict{Symbol,Any}
+function parse_cli()
+	s = ArgParseSettings()
 
-Convert the keys of a dictionary from `String` to `Symbol`. This allows a dictionary loaded from a TOML file to be used as a keyword argument list.
-"""
-function convert_strings_to_symbols(dict::Dict{String,Any})
-    new_dict = Dict{Symbol,Any}()
-    for (key, value) in dict
-        new_dict[Symbol(key)] = value
-    end
-    return new_dict
+	@add_arg_table s begin
+		"--loglevel", "-l"
+			help = "Set the logging level (debug, info, warn, error, etc.)"
+			arg_type = Logging.LogLevel
+			default = Logging.Info
+		"--outputdir", "-o"
+			help = "Directory to save output files to"
+			arg_type = String
+			default = "output"
+		"--clusterfile"
+			help = "Path to cluster info file. If not specified, the graph data in SimulationConfig.toml is used."
+			arg_type = String
+		"--clusteridx"
+			help = "Index of the cluster from the cluster file to diagonalize. This is only used if --clusterfile is specified."
+			arg_type = Int
+	end
+
+	return parse_args(s)
 end
 
 """
@@ -37,15 +49,10 @@ end
 The main entry point! Handles the high-level control flow of the program.
 """
 function (@main)(args)
+    parsed_args = parse_cli()
+
     # Install our own logger for the duration of the program
-    old_logger = Logging.global_logger(Logging.ConsoleLogger(stderr, Logging.Debug))
-    if "--debug" in args
-        @warn "Running in debug mode!"
-        sleep(5)  # Give user time to see the warning
-    else
-        # In normal mode disable debug logging
-        Logging.disable_logging(Logging.Debug)
-    end
+    old_logger = Logging.global_logger(Logging.ConsoleLogger(stdout, parsed_args["loglevel"]))
 
     if nthreads() == 1
         @warn "Running in single-threaded mode. For better performance, consider setting the JULIA_NUM_THREADS environment variable to a higher value."
@@ -63,7 +70,23 @@ function (@main)(args)
     test_config = ED.TestConfiguration(; convert_strings_to_symbols(params)...)
     t_vals = plot_config["T_min"]:plot_config["T_step"]:plot_config["T_max"]
     u_vals = plot_config["u_min"]:plot_config["u_step"]:plot_config["u_max"]
-    graph = Graphs.linear_chain(graph_config["num_sites"])
+
+	cluster_file = parsed_args["clusterfile"]
+	if isnothing(cluster_file)
+    	graph = Graphs.linear_chain(graph_config["num_sites"])
+	else
+		cluster_idx = parsed_args["clusteridx"]
+		if isnothing(cluster_idx)
+			error("Cluster file specified without cluster index! Please provide --clusteridx.")
+		end
+		cluster_data = JSON.read(read(cluster_file, String))
+		if cluster_idx < 1 || cluster_idx > length(cluster_data["clusters"])
+			error("Cluster index $cluster_idx out of bounds! File contains $(length(cluster_data["clusters"])) clusters.")
+		end
+
+		cluster = cluster_data["clusters"][cluster_idx]
+		graph = Graphs.from_cluster(cluster)
+	end
 
     observables, derived_observables, overlays = ED.default_observables(test_config, graph)
     @info "Defined observables: $(union(keys(observables), keys(derived_observables), keys(overlays)))"
@@ -82,7 +105,7 @@ function (@main)(args)
     observable_data["Energy"] ./= Graphs.num_sites(graph)
     observable_data["Entropy"] ./= Graphs.num_sites(graph)
 
-    export_observable_data(plot_config, t_vals, u_vals, observable_data, test_config, graph)
+    export_observable_data(plot_config, t_vals, u_vals, observable_data, test_config, graph, parsed_args["outputdir"])
 
     @info "Done."
 
@@ -90,6 +113,47 @@ function (@main)(args)
     Logging.global_logger(old_logger)
 
     return 0
+end
+
+function ArgParse.parse_item(::Type{Logging.LogLevel}, s::AbstractString)
+	level = lowercase(s)
+	if level == "debug"
+		return Logging.Debug
+	elseif level == "info"
+		return Logging.Info
+	elseif level == "warn" ||
+			level == "warning"
+		return Logging.Warn
+	elseif level == "error"
+		return Logging.Error
+	elseif level == "min" ||
+			level == "all" ||
+			level == "belowminlevel"
+		return Logging.BelowMinLevel
+	elseif level == "max" ||
+			level == "none" ||
+			level == "abovemaxlevel"
+		return Logging.AboveMaxLevel
+	else
+		try
+			return Logging.LogLevel(parse(Int, s))
+		catch
+			error("Invalid logging level: $s")
+		end
+	end
+end
+
+"""
+    convert_strings_to_symbols(dict::Dict{String,Any}) -> Dict{Symbol,Any}
+
+Convert the keys of a dictionary from `String` to `Symbol`. This allows a dictionary loaded from a TOML file to be used as a keyword argument list.
+"""
+function convert_strings_to_symbols(dict::Dict{String,Any})
+    new_dict = Dict{Symbol,Any}()
+    for (key, value) in dict
+        new_dict[Symbol(key)] = value
+    end
+    return new_dict
 end
 
 """
@@ -100,6 +164,7 @@ end
         observable_data::Dict{String,Matrix{Float64}},
         config::ED.TestConfiguration,
         graph::Graph,
+        output_dir::String,
     )
 
 Exports the computed observable data to CSV files and generates plots based on the provided plot configuration.
@@ -111,6 +176,7 @@ function export_observable_data(
     observable_data::Dict{String,Matrix{Float64}},
     config::ED.TestConfiguration,
     graph::Graph,
+	output_dir::String,
 )
     @info "Exporting observable data..."
 
@@ -118,10 +184,10 @@ function export_observable_data(
     plot_width = plot_config["width"]
     plot_height = plot_config["height"]
 
-    Base.Filesystem.mkpath("output")
+    Base.Filesystem.mkpath(output_dir)
     for (observable_name, data_matrix) in observable_data
         labeled_matrix = hcat(["u/T", T_vals...], vcat(u_vals', data_matrix))
-        CSV.write("output/$(observable_name).csv", CSV.Tables.table(labeled_matrix))
+        CSV.write("$(output_dir)/$(observable_name).csv", CSV.Tables.table(labeled_matrix))
     end
 
     # Load csv (if requested)
@@ -252,7 +318,7 @@ function export_observable_data(
         # Save the plot
         savefig(
             combined_figure,
-            "output/observable_data_$(fixed_value_name)_$fixed_value.png",
+            "$(output_dir)/observable_data_$(fixed_value_name)_$fixed_value.png",
         )
     end
 

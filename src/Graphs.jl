@@ -1,13 +1,23 @@
 "Defines a basic undirected graph structure and some common graph types."
 module Graphs
 
-export Graph, num_sites, edges, has_edge, linear_chain
+export Graph, from_cluster, num_sites, edges, has_edge, linear_chain
 
 "Represents an undirected graph."
 struct Graph
     num_sites::Int
     # These edges are stored as (min, max) tuples for easy look-up
     edges::Set{Tuple{Int,Int}}
+end
+
+function from_cluster(cluster::Dict{String,Any})
+	num_sites = length(cluster[1])
+	edges = Set{Tuple{Int,Int}}()
+	for edge in cluster[2]
+		push!(edges, (min(edge[1], edge[2]), max(edge[1], edge[2])))
+	end
+
+	return Graphs.Graph(num_sites, edges)
 end
 
 """

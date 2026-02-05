@@ -9,7 +9,7 @@ clean:
 
 debug:
 	@mkdir -p output
-	$(JULIA) src/Main.jl --debug 2>&1 | tee output/debug.log
+	$(JULIA) src/Main.jl -l debug | tee output/debug.log
 
 format:
 	$(JULIA) -e 'import JuliaFormatter; JuliaFormatter.format("."; always_for_in = true)'
