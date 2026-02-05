@@ -1,8 +1,8 @@
 [parameters]
-num_colors = 2
+num_colors = 3
 t = 2
 u_test = 0.0
-U = 1.0
+U = 2.0
 
 [plot]
 # Plot Characteristics
@@ -29,10 +29,11 @@ observables = [
 	[["Double Occupancies"], ["Doubleoccupancies"]],
 	[["Energy"], ["Energies"]],
 	[["Local Moment"], []],
-	[["Entropy"], ["Entropies"]]
+	[["Entropy"], ["Entropies"]],
+	[["C_spin"], ["CNNs"]],
 ]
 
-overlay_data = "tests/grids/N2_grids.zip/N2_grids/2x2_N2_U1_Tmu.zip/2x2_N2_U1_Tmu/"
+overlay_data = "tests/grids/2x2_ED_Repulsive_SUN_OBC.zip/2x2_ED_Repulsive_SUN_OBC/2x2_N3_U2/"
 
 [graph]
 num_sites = 4
