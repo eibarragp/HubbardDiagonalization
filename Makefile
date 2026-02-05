@@ -2,24 +2,26 @@
 
 default: run
 
+JULIA=@julia --project=.
+
 clean:
 	@rm -rf output
 
 debug:
 	@mkdir -p output
-	@julia --project=. -e 'include("src/HubbardDiagonalization.jl"); using .HubbardDiagonalization; main("--debug")' 2>&1 | tee output/debug.log
+	$(JULIA) src/Main.jl --debug 2>&1 | tee output/debug.log
 
 format:
-	@julia --project=. -e 'import JuliaFormatter; JuliaFormatter.format("."; always_for_in = true)'
+	$(JULIA) -e 'import JuliaFormatter; JuliaFormatter.format("."; always_for_in = true)'
 
 repl:
-	@julia --project=.
+	$(JULIA)
 
 run:
-	@julia --project=. -e 'include("src/HubbardDiagonalization.jl"); using .HubbardDiagonalization'
+	$(JULIA) src/Main.jl
 
 setup:
-	@julia --project=. -e 'import Pkg; Pkg.instantiate()'
+	$(JULIA) -e 'import Pkg; Pkg.instantiate()'
 
 test_grids:
-	@julia --project=. -e 'include("tests/grids/TestGrids.jl"); using .TestGrids'
+	$(JULIA) tests/grids/TestGrids.jl

@@ -1,10 +1,7 @@
-module TestGrids
-
-export main
-
-import HubbardDiagonalization
-import HubbardDiagonalization.Graphs
-import HubbardDiagonalization.CSVUtil
+using HubbardDiagonalization:
+    CSVUtil,
+    Graphs,
+    ExactDiagonalization as ED
 
 import CSV
 
@@ -158,14 +155,14 @@ function run_test_set!(
     warn_on_nan::Bool,
 )
     # Setup the test configuration and get the available observables
-    test_config = HubbardDiagonalization.TestConfiguration(
+    test_config = ED.TestConfiguration(
         num_colors = N,
         t = 2.0,
         u_test = 0.0,
         U = U,
     )
 
-    observables = HubbardDiagonalization.default_observables(test_config, graph)
+    observables = ED.default_observables(test_config, graph)
 
     @info "Running tests for N=$N, U=$U..."
 
@@ -186,7 +183,7 @@ function run_test_set!(
 
     # Temporarily disable info logging for cleaner test output
     disable_logging(Logging.Info)
-    results = HubbardDiagonalization.diagonalize_and_compute_observables(
+    results = ED.diagonalize_and_compute_observables(
         T_vals,
         u_vals,
         test_config,
@@ -250,6 +247,4 @@ function run_test_set!(
             (mean_difference, std_difference, max_difference),
         )
     end
-end
-
 end

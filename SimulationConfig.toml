@@ -1,5 +1,5 @@
 [parameters]
-num_colors = 3
+num_colors = 2
 t = 2
 u_test = 0.0
 U = 2.0
