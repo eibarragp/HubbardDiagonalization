@@ -10,7 +10,7 @@ struct Graph
     edges::Set{Tuple{Int,Int}}
 end
 
-function from_cluster(cluster::Dict{String,Any})
+function from_cluster(cluster::Tuple)
 	num_sites = length(cluster[1])
 	edges = Set{Tuple{Int,Int}}()
 	for edge in cluster[2]

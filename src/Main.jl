@@ -13,14 +13,6 @@ import TOML
 using ArgParse
 using Base.Threads
 
-# Set up plotting backend
-using Plots
-const use_unicode_plots = false
-if use_unicode_plots
-    import UnicodePlots
-    unicodeplots()
-end
-
 function parse_cli()
 	s = ArgParseSettings()
 
@@ -95,7 +87,7 @@ function (@main)(args)
     plot_config = config["plot"]
     graph_config = config["graph"]
 
-    test_config = ED.TestConfiguration(; convert_strings_to_symbols(params)...)
+    test_config = ED.TestConfiguration(; DataHelpers.convert_strings_to_symbols(params)...)
     t_vals = plot_config["T_min"]:plot_config["T_step"]:plot_config["T_max"]
     u_vals = plot_config["u_min"]:plot_config["u_step"]:plot_config["u_max"]
 
@@ -104,15 +96,15 @@ function (@main)(args)
 		cluster_idx = parsed_args["diagonalize"]["clusteridx"]
 
 		cluster_data = JSON.read(read(cluster_file, String))
-		if cluster_idx < 1 || cluster_idx > length(cluster_data["clusters"])
+		if cluster_idx < 1 || cluster_idx > length(keys(cluster_data))
 			error("Cluster index $cluster_idx out of bounds! File contains $(length(cluster_data["clusters"])) clusters.")
 		end
 
-		cluster = cluster_data["clusters"][cluster_idx]
+		cluster = DataHelpers.sorted_clusters(cluster_data)[cluster_idx]
 		graph = Graphs.from_cluster(cluster)
 
 		# Unless told otherwise, don't generate plots
-		if !parsed_args["diagonalize"]["generate_plots"]
+		if !parsed_args["diagonalize"]["generate-plots"]
 			plot_config["T_fixed_plots"] = []
 			plot_config["u_fixed_plots"] = []
 		end
@@ -141,17 +133,20 @@ function (@main)(args)
 		cluster_file = parsed_args["merge"]["clusterfile"]
 		data_dirs = parsed_args["merge"]["datadirs"]
 
-		observable_names = []
+		observable_names = String[]
 		for ((observables, _)) in plot_config["observables"]
 			append!(observable_names, observables)
 		end
 
-		observable_data = DataHelpers.merge_results_with_nlce(cluster_file, data_dirs, observable_names, plot_config["nlce_orders"] .|> parse(Int))
+		observable_data = DataHelpers.merge_results_with_nlce(cluster_file, data_dirs, observable_names, plot_config["nlce_orders"])
 	else
 		error("Invalid State! 'graph' is not defined and command is not 'merge'. This should never happen!")
 	end
 
-    DataHelpers.export_observable_data(plot_config, t_vals, u_vals, observable_data, test_config, parsed_args["%COMMAND%"] == "merge", graph, parsed_args["outputdir"])
+    DataHelpers.export_observable_data(plot_config, t_vals, u_vals, observable_data, test_config,
+		@isdefined(graph) ? string(Graphs.num_sites(graph)) : "NLCE",
+		parsed_args["%COMMAND%"] == "merge",
+		parsed_args["outputdir"])
 
     @info "Done."
 

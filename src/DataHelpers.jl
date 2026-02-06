@@ -1,9 +1,18 @@
 module DataHelpers
 
-using ..CSVUtil
-using ..Graphs
+import ..CSVUtil
+import ..ExactDiagonalization as ED
 
 import CSV
+import JSON3 as JSON
+
+# Set up plotting backend
+using Plots
+const use_unicode_plots = false
+if use_unicode_plots
+    import UnicodePlots
+    unicodeplots()
+end
 
 """
     convert_strings_to_symbols(dict::Dict{String,Any}) -> Dict{Symbol,Any}
@@ -25,7 +34,8 @@ end
         u_vals::AbstractVector{Float64},
         observable_data::Dict{String,Matrix{Float64}},
         config::ED.TestConfiguration,
-        graph::Graph,
+        num_sites_str::String,
+        using_nlce::Bool,
         output_dir::String,
     )
 
@@ -37,20 +47,19 @@ function export_observable_data(
     u_vals::AbstractVector{Float64},
     observable_data::Dict{String,Matrix{Float64}},
     config::ED.TestConfiguration,
+    num_sites_str::String,
 	using_nlce::Bool,
-    graph::Graph,
 	output_dir::String,
 )
     @info "Exporting observable data..."
 
-    num_sites = Graphs.num_sites(graph)
     plot_width = plot_config["width"]
     plot_height = plot_config["height"]
 
     Base.Filesystem.mkpath(output_dir)
     for (observable_name, data_matrix) in observable_data
         labeled_matrix = hcat(["u/T", T_vals...], vcat(u_vals', data_matrix))
-        CSV.write("$(output_dir)/$(observable_name).csv", CSV.Tables.table(labeled_matrix))
+        CSV.write("$(output_dir)/$(observable_name).csv", CSV.Tables.table(labeled_matrix), writeheader = false)
     end
 
     # Load csv (if requested)
@@ -132,27 +141,32 @@ function export_observable_data(
                 ylabel = "Observable Value",
                 title = join(observables, ", "),
                 # Only show legend if it would be confusing without one
-                legend_position = length(observables) > 1 || length(csv_overlays) > 1,
+                legend_position = length(observables) > 1 || (using_nlce ? true : length(csv_overlays) > 0),
                 size = (plot_width, plot_height),
             )
             # Add each observable
             for observable_name in observables
-                if !haskey(observable_data, observable_name)
-                    @warn "Observable $observable_name not found; skipping."
-                    continue
-                end
 				if using_nlce
 					for order in plot_config["nlce_orders"]
 						nlce_observable_name = "$(observable_name)_NLCE_Order_$order"
-						figure = plot!(
+                        if length(observables) > 1
+                            label = "$observable_name (Order $order)"
+                        else
+                            label = "Order $order"
+                        end
+						plot!(
 							figure,
 							x_axis,
 							indexer(index, observable_data[nlce_observable_name]),
-							labels = "$observable_name (NLCE Order $order)",
+							labels = label,
 						)
 					end
 				else
-					figure = plot!(
+                    if !haskey(observable_data, observable_name)
+                        @warn "Observable $observable_name not found; skipping."
+                        continue
+                    end
+					plot!(
 						figure,
 						x_axis,
 						indexer(index, observable_data[observable_name]),
@@ -169,7 +183,7 @@ function export_observable_data(
                     end
                     data = indexer(csv_index, csv_overlay_data[csv_overlay_name])
                     filtered_indices = 1:length(x_overlay_axis)
-                    figure = plot!(
+                    plot!(
                         figure,
                         x_overlay_axis[filtered_indices],
                         data[filtered_indices],
@@ -186,7 +200,7 @@ function export_observable_data(
         # Merge all figures into a single plot
         combined_figure = plot(
             figures...;
-            plot_title = "t=$(config.t), $fixed_value_name=$fixed_value, U=$(config.U), num_sites=$num_sites, num_colors=$(config.num_colors)",
+            plot_title = "t=$(config.t), $fixed_value_name=$fixed_value, U=$(config.U), num_sites=$num_sites_str, num_colors=$(config.num_colors)",
             layout = length(figures),
         )
 
@@ -214,7 +228,7 @@ function merge_results_with_nlce(cluster_file::String, data_dirs::Vector{String}
 	cluster_data = JSON.read(read(cluster_file, String))
 
 	coefficients = []
-	for cluster in cluster_data["clusters"]
+	for cluster in sorted_clusters(cluster_data)
 		push!(coefficients, cluster[3])
 	end
 
@@ -231,11 +245,11 @@ function merge_results_with_nlce(cluster_file::String, data_dirs::Vector{String}
 	# Load the data for each cluster and store it in a dictionary of the form Dict{ObservableName => [ClusterIndex => DataMatrix]}
 	cluster_observable_data = Dict{String,Vector{Matrix{Float64}}}()
 	for observable in observables
-		cluster_data = []
-		for (cluster_idx, data_dir) in enumerate(data_dirs)
+		cluster_data = Vector{Matrix{Float64}}()
+		for data_dir in data_dirs
 			data_path = "$(data_dir)/$(observable).csv"
 			data_matrix = CSVUtil.load_csv_matrix(data_path)[2:end, 2:end]  # Skip the first row and column which contain the u and T values
-			push!(cluster_data, data_matrix)
+            push!(cluster_data, data_matrix)
 		end
 
 		cluster_observable_data[observable] = cluster_data
@@ -260,6 +274,23 @@ function merge_results_with_nlce(cluster_file::String, data_dirs::Vector{String}
 	end
 
 	return observable_data
+end
+
+function sorted_clusters(cluster_data::AbstractDict)
+	clusters = []
+
+	for (id, cluster) in cluster_data
+		push!(clusters, (cluster..., parse(Int128, String(id))))
+	end
+	return sort(clusters; lt = (a, b) -> begin
+			# Sort primarily by size
+			if length(a[1]) != length(b[1])
+				return length(a[1]) < length(b[1])
+			end
+			# Then sort by id
+			return a[4] < b[4]
+		end
+	)
 end
 
 end
