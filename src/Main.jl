@@ -13,6 +13,11 @@ import TOML
 using ArgParse
 using Base.Threads
 
+"""
+	parse_cli() -> Dict{String, Any}
+
+Parses the command line arguments and returns a dictionary of the parsed values.
+"""
 function parse_cli()
 	s = ArgParseSettings()
 
@@ -67,18 +72,12 @@ end
 The main entry point! Handles the high-level control flow of the program.
 """
 function (@main)(args)
+	# Parse command line arguments
     parsed_args = parse_cli()
-
 	@info "Args: $parsed_args"
 
     # Install our own logger for the duration of the program
     old_logger = Logging.global_logger(Logging.ConsoleLogger(stdout, parsed_args["loglevel"]))
-
-    if nthreads() == 1
-        @warn "Running in single-threaded mode. For better performance, consider setting the JULIA_NUM_THREADS environment variable to a higher value."
-    else
-        @info "Running with $(nthreads()) threads."
-    end
 
     # Parse configuration file
     config = TOML.parsefile("SimulationConfig.toml")
@@ -92,6 +91,7 @@ function (@main)(args)
     u_vals = plot_config["u_min"]:plot_config["u_step"]:plot_config["u_max"]
 
 	if parsed_args["%COMMAND%"] == "diagonalize"
+		# Parse the given cluster data to a graph
 		cluster_file = parsed_args["diagonalize"]["clusterfile"]
 		cluster_idx = parsed_args["diagonalize"]["clusteridx"]
 
@@ -109,10 +109,19 @@ function (@main)(args)
 			plot_config["u_fixed_plots"] = []
 		end
 	elseif parsed_args["%COMMAND%"] == "simple"
+		# For simple runs, we just generate a linear chain graph with the specified number of sites.
     	graph = Graphs.linear_chain(graph_config["num_sites"])
 	end
 
 	if @isdefined(graph)
+		# Multithreading will really only be useful for diagonalization.
+		# Merging should basically be adding up <100 matrices, which is comparatively fast
+		if nthreads() == 1
+			@warn "Running in single-threaded mode. For better performance, consider setting the JULIA_NUM_THREADS environment variable to a higher value."
+		else
+			@info "Running with $(nthreads()) threads."
+		end
+
 		observables, derived_observables, overlays = ED.default_observables(test_config, graph)
 		@info "Defined observables: $(union(keys(observables), keys(derived_observables), keys(overlays)))"
 
@@ -138,6 +147,7 @@ function (@main)(args)
 		cluster_file = parsed_args["merge"]["clusterfile"]
 		data_dirs = parsed_args["merge"]["datadirs"]
 
+		# For merging, we only need to know the names of the observables to merge
 		observable_names = String[]
 		for ((observables, _)) in plot_config["observables"]
 			append!(observable_names, observables)
@@ -148,6 +158,8 @@ function (@main)(args)
 		error("Invalid State! 'graph' is not defined and command is not 'merge'. This should never happen!")
 	end
 
+	# Whichever command was run, it should've stored its result in `observable_data`
+	# Export the data based on the provided parameters
     DataHelpers.export_observable_data(plot_config, t_vals, u_vals, observable_data, test_config,
 		@isdefined(graph) ? string(Graphs.num_sites(graph)) : "NLCE",
 		parsed_args["%COMMAND%"] == "merge",
@@ -161,6 +173,11 @@ function (@main)(args)
     return 0
 end
 
+"""
+	ArgParse.parse_item(::Type{Logging.LogLevel}, s::AbstractString) -> Logging.LogLevel
+
+Custom parser for logging levels, allowing for user-friendly strings as well as numeric levels
+"""
 function ArgParse.parse_item(::Type{Logging.LogLevel}, s::AbstractString)
 	level = lowercase(s)
 	if level == "debug"
