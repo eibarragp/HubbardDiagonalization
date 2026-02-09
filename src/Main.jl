@@ -126,9 +126,14 @@ function (@main)(args)
 			overlays,
 		)
 
-		# Normalize energy and entropy per site
-		observable_data["Energy"] ./= Graphs.num_sites(graph)
-		observable_data["Entropy"] ./= Graphs.num_sites(graph)
+		# If we're not using NLCE,
+		if parsed_args["%COMMAND%"] == "simple"
+			# Normalize energy and entropy per site
+			observable_data["Energy"] ./= Graphs.num_sites(graph)
+			observable_data["Entropy"] ./= Graphs.num_sites(graph)
+		end
+		# Otherwise, we must report the extrinsic energy to the merger,
+		# and NLCE will take care of the normalization for us.
 	elseif parsed_args["%COMMAND%"] == "merge"
 		cluster_file = parsed_args["merge"]["clusterfile"]
 		data_dirs = parsed_args["merge"]["datadirs"]
