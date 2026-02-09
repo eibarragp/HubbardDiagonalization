@@ -233,7 +233,7 @@ function merge_results_with_nlce(cluster_file::String, data_dirs::Vector{String}
 	end
 
 	# This will create a matrix of the form [NLCE Order, Cluster Index]
-	coefficients = hcat(coefficients...)
+	coefficients = hcat(cumsum.(coefficients)...)
 
 	if length(data_dirs) > size(coefficients, 2)
 		error("More clusters provided ($(length(data_dirs))) than clusters in the cluster file ($(size(coefficients, 2)))!")

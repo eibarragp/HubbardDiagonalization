@@ -35,7 +35,7 @@ observables = [
 
 overlay_data = "tests/grids/2x2_ED_Repulsive_SUN_OBC.zip/2x2_ED_Repulsive_SUN_OBC/2x2_N3_U2/"
 
-nlce_orders = [1, 2]
+nlce_orders = [1, 2, 3]
 
 [graph]
 num_sites = 4
