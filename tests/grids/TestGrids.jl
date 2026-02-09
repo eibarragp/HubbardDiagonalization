@@ -1,7 +1,4 @@
-using HubbardDiagonalization:
-    CSVUtil,
-    Graphs,
-    ExactDiagonalization as ED
+using HubbardDiagonalization: CSVUtil, Graphs, ExactDiagonalization as ED
 
 import CSV
 
@@ -155,12 +152,7 @@ function run_test_set!(
     warn_on_nan::Bool,
 )
     # Setup the test configuration and get the available observables
-    test_config = ED.TestConfiguration(
-        num_colors = N,
-        t = 2.0,
-        u_test = 0.0,
-        U = U,
-    )
+    test_config = ED.TestConfiguration(num_colors = N, t = 2.0, u_test = 0.0, U = U)
 
     observables = ED.default_observables(test_config, graph)
 

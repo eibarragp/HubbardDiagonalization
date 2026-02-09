@@ -11,13 +11,13 @@ struct Graph
 end
 
 function from_cluster(cluster::Tuple)
-	num_sites = length(cluster[1])
-	edges = Set{Tuple{Int,Int}}()
-	for edge in cluster[2]
-		push!(edges, (min(edge[1], edge[2]), max(edge[1], edge[2])))
-	end
+    num_sites = length(cluster[1])
+    edges = Set{Tuple{Int,Int}}()
+    for edge in cluster[2]
+        push!(edges, (min(edge[1], edge[2]), max(edge[1], edge[2])))
+    end
 
-	return Graphs.Graph(num_sites, edges)
+    return Graphs.Graph(num_sites, edges)
 end
 
 """
