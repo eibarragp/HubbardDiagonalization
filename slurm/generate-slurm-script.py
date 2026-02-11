@@ -288,3 +288,5 @@ job_run_script.append(f'sbatch --dependency=afterok:$batch_{batch_idx-1}_jobid {
 
 with open(f'{NLCE_HOME}/slurm/{job_name}.sh', 'w') as f:
 	f.writelines(job_run_script)
+
+os.chmod(f'{NLCE_HOME}/slurm/{job_name}.sh', 0o755)
