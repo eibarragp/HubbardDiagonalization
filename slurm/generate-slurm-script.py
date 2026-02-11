@@ -251,7 +251,7 @@ for order in range(min_batched_order, max_order+1):
 	job_params = {
 		'job_name': f'NLCE_{job_name}_batch_{batch_idx}',
 		'log_file': f'{NLCE_HOME}/logs/{job_name}_batch_{batch_idx}_cluster_%a_%j.out',
-		'array_info': f'SBATCH --array={array_range_start}-{array_range_end}%{batch_params['max_concurrent_tasks']}',
+		'array_info': f'SBATCH --array={array_range_start}-{array_range_end}%{batch_params["max_concurrent_tasks"]}',
 		'command': f'{julia_base_command} -o '
 			f'"{NLCE_HOME}/output/{job_name}_cluster_%a" '
 			f'diagonalize {cluster_file_absolute_path} %a',
