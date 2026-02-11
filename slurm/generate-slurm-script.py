@@ -108,7 +108,7 @@ def format_time(time):
 # Re-implemented from the Julia code
 def color_configurations(N_fermions, num_sites, num_colors):
 	if N_fermions == 0:
-		return [0] * num_colors
+		return [[0] * num_colors]
 	if N_fermions > num_colors * num_sites:
 		return []
 	if num_colors == 1:
@@ -126,6 +126,8 @@ def color_configurations(N_fermions, num_sites, num_colors):
 
 # Assume matrix diagonalization scales w/ L^2
 def calculate_scaling_factor(order, num_colors):
+	if True:
+		return 1  # We need to come up with a better scaling algorithm
 	matrix_size = 0
 	N_max_fermions = order * num_colors
 	for N_fermions in range(N_max_fermions + 1):
@@ -197,10 +199,10 @@ if args.test is not None:
 
 cpus = int(input('Num Cores Per Task: '))
 num_colors = int(input_or_default('Num Colors', '3'))
-mem_scaling = float(input('Memory Scaling Factor (GiB / el)'))
+mem_scaling = float(input('Memory Scaling Factor (GiB / el): '))
 time_scaling = input_time('Time Scaling Factor: ')
 cpu_max = int(input('Max Total Num CPUs: '))
-mem_max = int(input('Max Total Memory: '))
+mem_max = int(input('Max Total Memory (GiB): '))
 min_batched_order = int(input_or_default('Min Batched Order', '4'))
 
 max_order = sorted_cluster_lengths[-1]
