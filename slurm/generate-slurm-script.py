@@ -72,7 +72,7 @@ def input_time(prompt):
 		mult *= 24
 		time += parse_pos(1, mult)
 		return time
-	if m := re.match(r'(\d+)(dhms)$', value):
+	if m := re.match(r'(\d+)([dhms])$', value):
 		value = int(m.group(1))
 		dur = m.group(2)
 		if dur == 'd':
@@ -200,7 +200,7 @@ if args.test is not None:
 cpus = int(input('Num Cores Per Task: '))
 num_colors = int(input_or_default('Num Colors', '3'))
 mem_scaling = float(input('Memory Scaling Factor (GiB / el): '))
-time_scaling = input_time('Time Scaling Factor: ')
+time_scaling = input_time('Time Scaling Factor')
 cpu_max = int(input('Max Total Num CPUs: '))
 mem_max = int(input('Max Total Memory (GiB): '))
 min_batched_order = int(input_or_default('Min Batched Order', '4'))
