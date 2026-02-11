@@ -263,7 +263,7 @@ for order in range(min_batched_order, max_order+1):
 
 	batch_idx += 1
 
-output_dirs = [f'"{NLCE_HOME}/output/{job_name}_cluster_{batch_num}"' for batch_num in range(batch_idx)]
+output_dirs = [f'"{NLCE_HOME}/output/{job_name}_cluster_{cluster_id}"' for cluster_id in range(next_cluster_id)]
 
 merge_job_params = {
 	'time_limit': '20:00',
