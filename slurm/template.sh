@@ -14,7 +14,6 @@
 
 # Possibly null params
 #{{ mail_user }}
-#{{ dependencies }}
 #{{ array_info }}
 
 # Setup Environment
@@ -23,8 +22,8 @@ module load julia
 echo "Running task $SLURM_ARRAY_TASK_ID on $SLURM_CPUS_PER_TASK cores"
 # Use our own package repository bc the system one is write-protected
 # But allow using the system one to enable bundled packages to work (Expanded by the empty entry after ':')
-export JULIA_DEPOT_PATH="$NLCE_HOME/.julia:"
+export JULIA_DEPOT_PATH="{{ nlce_home }}/.julia:"
 export JULIA_NUM_THREADS=$SLURM_CPUS_PER_TASK  # Use all cores!
-cd $NLCE_HOME/HubbardDiagonalization
+cd {{ project_root }}
 
 {{ command }}
