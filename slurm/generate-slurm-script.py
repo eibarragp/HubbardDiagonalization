@@ -92,16 +92,16 @@ def format_time(time):
 	if time < 0:
 		raise ValueError('Cannot Format a Negative Time!')
 	scale = 24 * 60 * 60
-	days = time // scale
+	days = int(time // scale)
 	time %= scale
 	scale /= 24
-	hours = time // scale
+	hours = int(time // scale)
 	time %= scale
 	scale /= 60
-	minutes = time // scale
+	minutes = int(time // scale)
 	time %= scale
 	scale /= 60
-	seconds = time
+	seconds = int(time)
 	return f'{days}:{hours}:{minutes}:{seconds}'
 
 
