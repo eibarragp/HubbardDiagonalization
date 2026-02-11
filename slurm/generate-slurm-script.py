@@ -14,9 +14,9 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 on_cluster = script_dir.startswith('/hopper')
 
 NLCE_HOME = os.getenv('NLCE_HOME',
-					  os.path.normpath(os.path.join(script_dir, '..', '..')
+					  os.path.abspath(os.path.join(script_dir, '..', '..')
 					  if on_cluster else os.path.join(script_dir, '..', 'nlce_home')))
-PROJECT_ROOT = os.getenv('PROJECT_ROOT', os.path.normpath(os.path.join(script_dir, '..')))
+PROJECT_ROOT = os.getenv('PROJECT_ROOT', os.path.abspath(os.path.join(script_dir, '..')))
 
 # Always run from the project root
 julia_base_command = f'julia --project=. src/Main.jl'
