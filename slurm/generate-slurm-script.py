@@ -223,7 +223,7 @@ batches = {
 	order: {
 		'time_limit': format_time(time_scaling * scale),
 		'memory_limit': f'{mem_scaling * scale}gb',
-		'cpus_per_task': cpus,
+		'cpus_per_task': str(cpus),
 		'max_concurrent_tasks': min(cpu_max // cpus, mem_max // (mem_scaling * scale))
 	} for order, scale in order_scales.items()
 }
@@ -268,7 +268,7 @@ output_dirs = [f'"{NLCE_HOME}/output/{job_name}_cluster_{batch_num}"' for batch_
 merge_job_params = {
 	'time_limit': '20:00',
 	'memory_limit': '4gb',
-	'cpus_per_task': 1,  # Merging does not benefit from multithreading
+	'cpus_per_task': '1',  # Merging does not benefit from multithreading
 	'log_file': f'{NLCE_HOME}/logs/{job_name}_merge_%j.out',
 	'array_info': '<no array>',
 	'command': f'{julia_base_command} -o '
