@@ -6,8 +6,17 @@ import math
 import os
 import re
 
-NLCE_HOME='.'
-PROJECT_ROOT=f'{NLCE_HOME}/HubbardDiagonalization'
+# Calculate the project root and NLCE home directory based on
+# 1) Environment variables if set
+# 2) The location of this script
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+on_cluster = script_dir.startswith('/hopper')
+
+NLCE_HOME = os.getenv('NLCE_HOME',
+					  os.path.normpath(os.path.join(script_dir, '..', '..')
+					  if on_cluster else os.path.join(script_dir, '..', 'nlce_home')))
+PROJECT_ROOT = os.getenv('PROJECT_ROOT', os.path.normpath(os.path.join(script_dir, '..')))
 
 # Always run from the project root
 julia_base_command = f'julia --project=. src/Main.jl'
