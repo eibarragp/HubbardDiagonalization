@@ -264,8 +264,8 @@ for order in range(min_batched_order, max_order+1):
 		'log_file': f'{NLCE_HOME}/logs/{job_name}_batch_{batch_idx}_cluster_%a_%j.out',
 		'array_info': f'SBATCH --array={array_range_start}-{array_range_end}%{batch_params["max_concurrent_tasks"]}',
 		'command': f'{julia_base_command} -o '
-			f'"{NLCE_HOME}/output/{job_name}_cluster_%a" '
-			f'diagonalize {cluster_file_absolute_path} %a',
+			f'"{NLCE_HOME}/output/{job_name}_cluster_$SLURM_ARRAY_TASK_ID" '
+			f'diagonalize {cluster_file_absolute_path} $SLURM_ARRAY_TASK_ID',
 		**batch_params,
 		**general_params
 	}
@@ -284,7 +284,7 @@ merge_job_params = {
 	'cpus_per_task': '1',  # Merging does not benefit from multithreading
 	'array_info': '<no array>',
 	'command': f'{julia_base_command} -o '
-		f'"{NLCE_HOME}/output/{job_name}_merged '
+		f'"{NLCE_HOME}/output/{job_name}_merged" '
 		f'diagonalize {cluster_file_absolute_path} {" ".join(output_dirs)}',
 	**general_params
 }
