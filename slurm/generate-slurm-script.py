@@ -89,20 +89,31 @@ def input_time(prompt):
 	raise ValueError('Invalid Time Specification!')
 
 def format_time(time):
-	if time < 0:
-		raise ValueError('Cannot Format a Negative Time!')
+	if time <= 0:
+		raise ValueError('Time Must Be Positive!')
+	formatted_time = ''
+
 	scale = 24 * 60 * 60
 	days = int(time // scale)
 	time %= scale
+	if days > 0:
+		formatted_time += f'{days}:'
+
 	scale /= 24
 	hours = int(time // scale)
 	time %= scale
+	if hours > 0 or days > 0:
+		formatted_time += f'{hours}:'
+
 	scale /= 60
 	minutes = int(time // scale)
 	time %= scale
-	scale /= 60
+	if minutes > 0 or hours > 0 or days > 0:
+		formatted_time += f'{minutes}:'
+
 	seconds = int(time)
-	return f'{days}:{hours}:{minutes}:{seconds}'
+	formatted_time += f'{seconds}'
+	return formatted_time
 
 
 # Re-implemented from the Julia code
@@ -273,7 +284,8 @@ merge_job_params = {
 	'array_info': '<no array>',
 	'command': f'{julia_base_command} -o '
 		f'"{NLCE_HOME}/output/{job_name}_merged '
-		f'diagonalize {cluster_file_absolute_path} {" ".join(output_dirs)}'
+		f'diagonalize {cluster_file_absolute_path} {" ".join(output_dirs)}',
+	**general_params
 }
 
 generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}_merge.slurm', merge_job_params)
@@ -288,5 +300,7 @@ job_run_script.append(f'sbatch --dependency=afterok:$batch_{batch_idx-1}_jobid {
 
 with open(f'{NLCE_HOME}/slurm/{job_name}.sh', 'w') as f:
 	f.writelines(job_run_script)
+
+job_run_script.append('squeue -u $USER\n')
 
 os.chmod(f'{NLCE_HOME}/slurm/{job_name}.sh', 0o755)
