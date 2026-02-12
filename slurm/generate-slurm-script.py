@@ -277,10 +277,11 @@ for order in range(min_batched_order, max_order+1):
 output_dirs = [f'"{NLCE_HOME}/output/{job_name}_cluster_{cluster_id}"' for cluster_id in range(1, next_cluster_id)]
 
 merge_job_params = {
+	'job_name': f'NLCE_{job_name}_merge',
+	'log_file': f'{NLCE_HOME}/logs/{job_name}_merge_%j.out',
 	'time_limit': '20:00',
 	'memory_limit': '4gb',
 	'cpus_per_task': '1',  # Merging does not benefit from multithreading
-	'log_file': f'{NLCE_HOME}/logs/{job_name}_merge_%j.out',
 	'array_info': '<no array>',
 	'command': f'{julia_base_command} -o '
 		f'"{NLCE_HOME}/output/{job_name}_merged '
