@@ -233,7 +233,7 @@ if (max_time := time_scaling * order_scales[max_order]) > 24 * 60 * 60:
 batches = {
 	order: {
 		'time_limit': format_time(time_scaling * scale),
-		'memory_limit': f'{mem_scaling * scale}gb',
+		'memory_limit': f'{math.ceil(mem_scaling * scale)}gb',
 		'cpus_per_task': str(cpus),
 		'max_concurrent_tasks': min(cpu_max // cpus, mem_max // (mem_scaling * scale))
 	} for order, scale in order_scales.items()
