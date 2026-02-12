@@ -295,9 +295,9 @@ job_run_script = ['#!/bin/bash\n\n']
 
 for batch_num in range(batch_idx):
 	dependency = '' if batch_num == 0 else f'--dependency=afterok:$batch_{batch_num-1}_jobid'
-	job_run_script.append(f'batch_{batch_num}_jobid=$(sbatch --parsable {dependency} {NLCE_HOME}/slurm/{job_name}_batch_{batch_num}.slurm)\n')
+	job_run_script.append(f'batch_{batch_num}_jobid=$(sbatch --parsable {dependency} --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_batch_{batch_num}.slurm)\n')
 
-job_run_script.append(f'sbatch --dependency=afterok:$batch_{batch_idx-1}_jobid {NLCE_HOME}/slurm/{job_name}_merge.slurm\n')
+job_run_script.append(f'sbatch --dependency=afterok:$batch_{batch_idx-1}_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_merge.slurm\n')
 
 # Print the queued jobs
 job_run_script.append('squeue -u $USER\n')
