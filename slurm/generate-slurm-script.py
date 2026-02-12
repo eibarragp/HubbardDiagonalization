@@ -299,9 +299,10 @@ for batch_num in range(batch_idx):
 
 job_run_script.append(f'sbatch --dependency=afterok:$batch_{batch_idx-1}_jobid {NLCE_HOME}/slurm/{job_name}_merge.slurm\n')
 
+# Print the queued jobs
+job_run_script.append('squeue -u $USER\n')
+
 with open(f'{NLCE_HOME}/slurm/{job_name}.sh', 'w') as f:
 	f.writelines(job_run_script)
-
-job_run_script.append('squeue -u $USER\n')
 
 os.chmod(f'{NLCE_HOME}/slurm/{job_name}.sh', 0o755)
