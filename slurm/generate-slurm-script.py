@@ -245,7 +245,7 @@ for order in range(min_batched_order, max_order+1):
 	batch_params = batches[order]
 
 	if order == min_batched_order:
-		if min_batched_order == max_order:
+		if min_batched_order == sorted_cluster_lengths[-1]:
 			num_clusters_in_batch = len(sorted_cluster_lengths)
 		else:
 			num_clusters_in_batch = sorted_cluster_lengths.index(order + 1)
