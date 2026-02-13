@@ -285,7 +285,7 @@ merge_job_params = {
 	'array_info': '<no array>',
 	'command': f'{julia_base_command} -o '
 		f'"{NLCE_HOME}/output/{job_name}_merged" '
-		f'diagonalize {cluster_file_absolute_path} {" ".join(output_dirs)}',
+		f'merge {cluster_file_absolute_path} {" ".join(output_dirs)}',
 	**general_params
 }
 
