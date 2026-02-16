@@ -17,7 +17,7 @@ function (@main)(args)
     datasets = ["./tests/grids/N2_grids.zip", "./tests/grids/2x2_ED_Repulsive_SUN_OBC.zip"]
     # Setup mappings between result names and csv files
     test_observables = Dict(
-        "Density" => "Densities.csv",
+        "Num_Particles" => "Densities.csv", # Will be normalized by number of sites in the comparison
         "Double Occupancies" => "Doubleoccupancies.csv",
         "Energy" => "Energies.csv",
         "Entropy" => "Entropies.csv",
@@ -217,8 +217,10 @@ function run_test_set!(
         expected = expected[valid_indices]
         computed = computed[valid_indices]
 
-        # Energy and Entropy are normalized by the number of sites
-        if observable_name == "Energy" || observable_name == "Entropy"
+        # Some observables are normalized by the number of sites
+        if observable_name == "Energy" ||
+           observable_name == "Entropy" ||
+           observable_name == "Num_Particles"
             computed ./= Graphs.num_sites(graph)
         end
 

@@ -65,32 +65,50 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
 
     observables["Energy"] = _ -> 0.0  # Will be handled specially
 
-    observables["P_a"] =
-        state ->
-            count_ones(state[1]) *
-            prod((1 - count_ones(state[c]) for c in 2:num_colors), init = 1)
+    # Create a function to generate P_a (1-P_b) + P_b (1-P_a) type observables for any combination of colors
+    function p_function(n_check_colors)
+        function func(state)
+            # Create array of P_n
+            color_count_state = count_ones.(state)
+            # Create array of (1-P_n)
+            color_count_state_inverse = 1 .- color_count_state
+            total = 0.0
+            # For every combination of n_check_colors colors,
+            for color_combination in enumerate_states(num_colors, n_check_colors)
+                active_colors = digits(color_combination, base = 2, pad = num_colors)
+                # Take the product of P_n for the active colors and (1-P_n) for the inactive colors
+                total +=
+                    prod(active_colors .* color_count_state) *
+                    prod((1 .- active_colors) .* color_count_state_inverse)
+            end
+            # Normalize by num permutations
+            return total / binomial(num_colors, n_check_colors)
+        end
+        return func
+    end
+
+    observables["P_a"] = p_function(1)
     if num_colors >= 2
-        observables["P_ab"] =
-            state ->
-                prod(count_ones(state[c]) for c in 1:2) *
-                prod((1 - count_ones(state[c]) for c in 3:num_colors), init = 1)
+        observables["P_ab"] = p_function(2)
     end
     if num_colors >= 3
-        observables["P_abc"] =
-            state ->
-                prod(count_ones(state[c]) for c in 1:3) *
-                prod((1 - count_ones(state[c]) for c in 4:num_colors), init = 1)
+        observables["P_abc"] = p_function(3)
     end
 
     # Observables that can be calculated from other observables
     derived_observables = Dict{String,Function}()
-    derived_observables["Local Moment"] =
-        observable_data ->
-            @. observable_data["Num_Particles"] - 2 * observable_data["Filled States"]
-    derived_observables["Density"] =
-        observable_data -> observable_data["Num_Particles"] ./ num_sites
-    derived_observables["Entropy"] =
-        observable_data -> zeros(Float64, size(observable_data["Num_Particles"])...)  # Will be handled specially
+    # Not well defined for more than 2 colors/NLCE
+    # derived_observables["Local Moment"] =
+    #     observable_data ->
+    #         @. observable_data["Num_Particles"] - 2 * observable_data["Filled States"]
+    # derived_observables["Density"] =
+    #     observable_data -> observable_data["Num_Particles"] ./ num_sites
+    derived_observables["Entropy"] = observable_data -> copy(observable_data["Energy"])  # Will be handled specially later
+    derived_observables["n^2"] = observable_data -> observable_data["Num_Particles"] .^ 2
+    derived_observables["E^2"] = observable_data -> observable_data["Energy"] .^ 2
+    derived_observables["En"] =
+        observable_data -> observable_data["Energy"] .* observable_data["Num_Particles"]
+
 
     # Additional Plots that can be directly calculated
     overlays = Dict{String,Function}()
@@ -424,6 +442,15 @@ function diagonalize_and_compute_observables(
 
     @info "Computing derived observables..."
 
+
+    # First, update the energy so derived observables can use it.
+    # The free energy is H + u * N. At each observed energy state, N is const,
+    # we can just add u_test * N to each eigenvalue to get the corrected energy.
+    observable_data["Energy"] .+= -u_test * n_fermion_data
+    @debug begin
+        "  Updated Energy data: $(observable_data["Energy"])"
+    end
+
     for (observable_name, observable_function) in derived_observables
         observable_data[observable_name] = observable_function(observable_data)
     end
@@ -467,31 +494,13 @@ function diagonalize_and_compute_observables(
 
         # Compute each observable
         for (observable_name, observable_values) in observable_data
-            if observable_name == "Energy"
-                # Now, update the energy. The free energy is H + u * N, so it works out to
-                observable_values = (-u_test * n_fermion_data) .+ observable_values
-                @debug begin
-                    "  Updated Energy data: $observable_values"
-                end
-
-                # While we're here, calculate the entropy
-                # The expectation value of the Hamiltonian depends on u, so we have to shift it here
-                internal_energy_values =
+            if observable_name == "Entropy"
+                # The entropy requires a special calculation.
+                # For now, we'll just calculate the internal energy
+                # observable_values will contain the energy from the definition of the entropy function above,
+                # So we can just add u * N back to get the internal energy
+                observable_values =
                     (-u_datapoint_shift * n_fermion_data) .+ observable_values
-                internal_energy_expectations =
-                    sum(corrected_weights .* internal_energy_values; dims = 1)
-                normalized_internal_energy_expectations = internal_energy_expectations ./ Z
-                entropy_expectation =
-                    @. normalized_internal_energy_expectations * B' + log(Z)
-                computed_observable_values["Entropy"][:, i] = entropy_expectation
-                @debug begin
-                    "  Entropy: $entropy_expectation (Internal Energy Values: $internal_energy_values Internal Energy Expectation: $normalized_internal_energy_expectations)"
-                end
-
-                # Fallthrough/continue to store the energy value based on the corrected data
-            elseif observable_name == "Entropy"
-                # Calculated above
-                continue
             end
 
             # Compute the expectation value of each observable
@@ -504,6 +513,15 @@ function diagonalize_and_compute_observables(
 
             computed_observable_values[observable_name][:, i] .=
                 normalized_expectation_values'
+        end
+
+        # From above, we have the internal energy, so use that to calculate the entropy
+        internal_energy_expectations = computed_observable_values["Entropy"][:, i]
+        entropy_expectation = @. B * internal_energy_expectations + log(Z)'
+        computed_observable_values["Entropy"][:, i] .= entropy_expectation
+
+        @debug begin
+            "  Entropy: $entropy_expectation (Internal Energy Expectation: $internal_energy_expectations)"
         end
 
         for (overlay_name, overlay_function) in overlays
