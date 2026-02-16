@@ -1,8 +1,8 @@
 [parameters]
-num_colors = 2
-t = 2
+num_colors = 3
+t = 1
 u_test = 0.0
-U = 2.0
+U = 8.0
 
 [plot]
 # Plot Characteristics
