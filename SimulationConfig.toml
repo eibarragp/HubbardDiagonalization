@@ -10,8 +10,8 @@ width = 1000
 height = 800
 
 # Ranges
-T_min = 0.02
-T_max = 10
+T_min = 20
+T_max = 100
 T_step = 0.02
 u_min = -20
 u_max = 20
@@ -25,17 +25,17 @@ u_fixed_plots = [-0.5, 0.0, 0.5]
 # where each subplot is:
 #   [[generated observable names], [csv data names (from overlay_data)]]
 observables = [
-	[["Density"], ["Densities"]],
-	[["Double Occupancies"], ["Doubleoccupancies"]],
+	[["Num_Particles"], []],
 	[["Energy"], ["Energies"]],
-	[["Local Moment"], []],
 	[["Entropy"], ["Entropies"]],
-	[["C_spin"], ["CNNs"]],
+	[["n^2"], []],
+	[["E^2"], []],
+	[["En"], []],
 ]
 
 overlay_data = "none"
 
-nlce_orders = [1, 2, 3]
+nlce_orders = [2, 3, 4]
 
 [graph]
 num_sites = 4

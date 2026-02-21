@@ -60,6 +60,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
     observables = Dict{String,Function}()
 
     observables["Num_Particles"] = state -> sum(count_ones(color) for color in state)
+    observables["n^2"] = state -> sum(count_ones(color) for color in state)^2
     observables["Filled States"] = state -> count_ones(reduce(&, state))
     observables["Double Occupancies"] = state -> count_double_occupancies(state, num_colors)
 
@@ -104,7 +105,6 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
     # derived_observables["Density"] =
     #     observable_data -> observable_data["Num_Particles"] ./ num_sites
     derived_observables["Entropy"] = observable_data -> copy(observable_data["Energy"])  # Will be handled specially later
-    derived_observables["n^2"] = observable_data -> observable_data["Num_Particles"] .^ 2
     derived_observables["E^2"] = observable_data -> observable_data["Energy"] .^ 2
     derived_observables["En"] =
         observable_data -> observable_data["Energy"] .* observable_data["Num_Particles"]
