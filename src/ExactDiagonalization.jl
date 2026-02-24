@@ -63,6 +63,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
     observables["n^2"] = state -> sum(count_ones(color) for color in state)^2
     observables["Filled States"] = state -> count_ones(reduce(&, state))
     observables["Double Occupancies"] = state -> count_double_occupancies(state, num_colors)
+    observables["na_nb"] = state -> count_double_occupancies(state, num_colors)
 
     observables["Energy"] = _ -> 0.0  # Will be handled specially
 
