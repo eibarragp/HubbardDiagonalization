@@ -447,7 +447,7 @@ function diagonalize_and_compute_observables(
     # First, update the energy so derived observables can use it.
     # The free energy is H + u * N. At each observed energy state, N is const,
     # we can just add u_test * N to each eigenvalue to get the corrected energy.
-    observable_data["Energy"] .+= -u_test * n_fermion_data
+    observable_data["Energy"] .+= u_test * n_fermion_data
     @debug begin
         "  Updated Energy data: $(observable_data["Energy"])"
     end
@@ -499,9 +499,11 @@ function diagonalize_and_compute_observables(
                 # The entropy requires a special calculation.
                 # For now, we'll just calculate the internal energy
                 # observable_values will contain the energy from the definition of the entropy function above,
-                # So we can just add u * N back to get the internal energy
+                # So we can just add the u * N back to get the internal energy
+                # We want to exclude the u_test term from this because it was already removed
+                # in the energy correction calculation
                 observable_values =
-                    (-u_datapoint_shift * n_fermion_data) .+ observable_values
+                    (-(u_datapoint_shift + u_test) * n_fermion_data) .+ observable_values
             end
 
             # Compute the expectation value of each observable
