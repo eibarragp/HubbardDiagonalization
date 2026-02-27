@@ -146,7 +146,8 @@ function export_observable_data(
                 title = join(observables, ", "),
                 # Only show legend if it would be confusing without one
                 legend_position = length(observables) > 1 ||
-                                  (using_nlce ? true : length(csv_overlays) > 0),
+                                  (using_nlce ? true :
+                                  length(csv_overlays) > 0 && csv_index != -1),
                 size = (plot_width, plot_height),
             )
             # Add each observable
