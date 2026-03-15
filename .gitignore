@@ -1,3 +1,4 @@
+.julia/
 output*/
 Manifest.toml
 nlce_home/
