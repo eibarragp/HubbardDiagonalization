@@ -14,7 +14,9 @@ function from_cluster(cluster::Tuple)
     num_sites = length(cluster[1])
     edges = Set{Tuple{Int,Int}}()
     for edge in cluster[2]
-        push!(edges, (min(edge[1], edge[2]), max(edge[1], edge[2])))
+        # Add the edge to the graph, ensuring that the smaller index comes first
+        # and adjusting for 1-based indexing in Julia
+        push!(edges, (min(edge[1], edge[2])+1, max(edge[1], edge[2])+1))
     end
 
     return Graphs.Graph(num_sites, edges)
