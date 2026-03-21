@@ -213,19 +213,16 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
 
     if num_sites == 1
         # Single-site Hubbard model exact solutions
-        e0(n, u) = U * binomial(n, 2) - (u + (U / 2) * (num_colors - 1)) * n
+        e0(n, u) = U * binomial(n, 2) - u * n
         weighted_sum(B, u, f) =
             sum(binomial(num_colors, n) * f(n) * exp(-B * e0(n, u)) for n in 0:num_colors)
         z0(B, u) = weighted_sum(B, u, n -> 1)
         rho(B, u) = (1/z0(B, u)) * weighted_sum(B, u, n -> n)
         energy(B, u) =
-            (1/z0(B, u)) *
-            weighted_sum(B, u, n -> e0(n, u) + (u + (U/2) * (num_colors - 1)) * n)
+            (1/z0(B, u)) * weighted_sum(B, u, n -> e0(n, u) + u * n)
         overlays["Actual Energy"] = energy
         overlays["Actual Entropy"] =
-            (B, u) ->
-                log(z0(B, u)) +
-                B * (energy(B, u) - (u + (U/2) * (num_colors - 1)) * rho(B, u))
+            (B, u) -> log(z0(B, u)) + B * (energy(B, u) - u * rho(B, u))
     end
 
     function to_observable(type, with_args)
@@ -524,7 +521,8 @@ function diagonalize_and_compute_observables(
     # For computing the observables, its more efficient to have the temperatures in the rows
     weights = weights'
 
-    u_shift = (U/2) * (num_colors - 1)  # Shift observables so that density=N/2 at u=0
+    # The value of mu such that the density is N/2
+    u_shift = (U/2) * (num_colors - 1)
 
     # Calculate the ground-state energy
     E0 = minimum(@. energy_data - (u_shift * n_fermion_data))
@@ -534,14 +532,19 @@ function diagonalize_and_compute_observables(
     # Create a new container to store the observable values at each u
     computed_observable_values = create_observable_data_map(nothing, num_temps, num_us)
     @threads for (i, u) in collect(enumerate(u_vals))
-        # The value that has to be added to u_test to shift to the desired u
-        u_datapoint_shift = u - u_test + u_shift
+        # Shift observables so that density=N/2 at u=0
+        u_shifted = u + u_shift
 
         # Re-weight the data according to the new u value
+        # To explain the negatives: The partition function terms are of the form e^(-B * E),
+        # The energy contains a term of the form -u * N. We seek to remove the contribution of
+        # u_test and add the contribution of u_shifted, so we need E -> E + u_test * N - u_shifted * N
+        # (again, because the u * N term is negative). We can rewrite this as E -> E - (u_shifted - u_test) * N.
+        # Thus, we need to multiply by e^(-B * -(u_shifted - u_test) * N) = e^(B * (u_shifted - u_test) * N).
         # Because of the way broadcasting works, we have to construct the exponents first
         # (or Julia gets confused). The below syntax makes a matrix of all combinations of
         # elements from B and n_fermion_data
-        correction_exponents = permutedims(-B * -u_datapoint_shift) .* n_fermion_data
+        correction_exponents = permutedims(B * (u_shifted - u_test)) .* n_fermion_data
         # This makes corrected_weights a matrix with indexing [state, temp]
         corrected_weights = @. exp(correction_exponents) * weights
 
@@ -557,7 +560,7 @@ function diagonalize_and_compute_observables(
         for observable_name in keys(energy_dependent_observable_values)
             observable = observables[observable_name]
             # Get the observable value for each state
-            observable_values = observable.func(u + u_shift, energy_data, n_fermion_data)
+            observable_values = observable.func(u_shifted, energy_data, n_fermion_data)
             energy_dependent_observable_values[observable_name][:] = observable_values
         end
 
@@ -581,9 +584,9 @@ function diagonalize_and_compute_observables(
                 args = getindex.((computed_observable_values,), observable.args)
                 # Compute the observable value at this u for each temperature
                 computed_observable_values[observable_name][:, i] .=
-                    observable.func(u + u_shift, B, Z, view.(args, :, i)...)
+                    observable.func(u_shifted, B, Z, view.(args, :, i)...)
             elseif observable.type == ObservableType_Overlay
-                computed_observable_values[observable_name][:, i] = observable.func.(B, u)
+                computed_observable_values[observable_name][:, i] = observable.func.(B, u_shifted)
             end
         end
     end
