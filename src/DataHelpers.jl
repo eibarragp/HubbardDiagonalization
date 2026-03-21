@@ -206,12 +206,12 @@ function export_observable_data(
 
     # Create plots for each T value
     for T in plot_config["T_fixed_plots"]
-        plot_data(T, :T)
+        plot_data(Float64(T), :T)
     end
 
     # And create plots for each u value
     for u in plot_config["u_fixed_plots"]
-        plot_data(u, :u)
+        plot_data(Float64(u), :u)
     end
 
     return
