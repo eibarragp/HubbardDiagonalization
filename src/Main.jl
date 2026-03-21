@@ -123,7 +123,7 @@ function (@main)(args)
         end
 
         observables = ED.default_observables(test_config, graph)
-        @info "Defined observables: $(union(keys(observables), keys(derived_observables), keys(overlays)))"
+        @info "Defined observables: $(keys(observables))"
 
         observable_data = ED.diagonalize_and_compute_observables(
             t_vals,
