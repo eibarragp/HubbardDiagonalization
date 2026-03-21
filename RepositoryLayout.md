@@ -18,7 +18,8 @@ Here is a basic overview of the project layout.
   | |- HubbardDiagonalization.jl  # Main module definition (ensures that all files are loaded in the right order)
   | |- Main.jl                    # Main entry point; Handles command line parsing and high-level logic
   | |- StateEnumeration.jl        # Helper functions for enumerating states under various constraints
-  | \- SymmetricMatrices.jl       # Defines a SymmetricMatrix type that stores only the lower-triangular part of the matrix.
+  | |- SymmetricMatrices.jl       # Defines a SymmetricMatrix type that stores only the lower-triangular part of the matrix.
+  | \- Utils.jl                   # Miscellaneous utility functions (mostly used for working around Julia capabilities).
   \- tests/                 # Test files
     \- grids                  # Test output against sample 2x2 grid results
       |- *.zip                  # Test datasets

@@ -180,7 +180,7 @@ function run_test_set!(
         u_vals,
         test_config,
         graph,
-        observables...,
+        observables,
     )
     disable_logging(Logging.Debug)
 

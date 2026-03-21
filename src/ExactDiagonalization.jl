@@ -6,11 +6,57 @@ export default_observables, diagonalize_and_compute_observables
 using ..Graphs
 using ..StateEnumeration
 using ..SymmetricMatrices
+import ..Utils
 
 import CSV
 import LinearAlgebra
 
 using Base.Threads
+
+"""
+    Defines when and how an observable should be computed and plotted.
+    - Direct: An observable that is computed purely from the basis states.
+        - func should be a function that takes a basis state. args is unused.
+    - Derived: An observable that is computed from the values of the direct observables. Must not be energy-dependent.
+        - func should accept the observable values listed in args (in order) as arbitrary-length arrays
+            and perform element-wise operations to compute the derived observable.
+    - Energy_Dependent: An observable that is computed directly from the basis states and eigenvalues.
+        - func should be a function that takes a value of mu, and an extrinsic energy and the number of particles,
+            both as arrays with the same length. It should then perform element-wise operations to compute the derived observable.
+            args is unused.
+    - Expectation_Derived: An observable that is computed from the expectation values of other observables
+        - func should accept (in-order) the value of u, a vector of beta values, the value of the partition function,
+            and the observable values listed in args (in order) as arrays containing the expectation value at each temperature.
+    - Overlay: An observable that is computed directly from (B, u) pairs and is meant to be plotted as an overlay on top of the other observables.
+        - func should accept (in-order) a value of B and a value of u and return the value of the observable at that point. args is unused.
+"""
+@enum ObservableType begin
+    ObservableType_Direct
+    ObservableType_Derived
+    ObservableType_Energy_Dependent
+    ObservableType_Expectation_Derived
+    ObservableType_Overlay
+end
+
+"""
+    A structure describing an observable to be computed and plotted.
+"""
+struct Observable
+    """
+        The type of the observable. (See ObservableType for options)
+    """
+    type::ObservableType
+    """
+        The other observables that this observable depends on. (Used for Derived and Expectation_Derived types)
+    """
+    args::AbstractVector{String}
+    """
+        The function that computes the observable. See ObservableType for specifications.
+    """
+    func::Function
+end
+# Identity operator to make some typing magic work later
+Observable(o::Observable) = o
 
 """
     A structure to hold the configuration parameters for the simulation.
@@ -57,62 +103,113 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
     U = test_config.U
     num_sites = Graphs.num_sites(graph)
 
-    observables = Dict{String,Function}()
+    observable_tmp_type = Function
+    observable_with_args_tmp_type = Tuple{AbstractVector{String}, Function}
 
-    observables["Num_Particles"] = state -> sum(count_ones(color) for color in state)
-    observables["n^2"] = state -> sum(count_ones(color) for color in state)^2
-    observables["Filled States"] = state -> count_ones(reduce(&, state))
-    observables["Double Occupancies"] = state -> count_double_occupancies(state, num_colors)
-    observables["na_nb"] = state -> count_double_occupancies(state, num_colors)
+    direct_observables = Dict{String,observable_tmp_type}(
+        "Num_Particles" => state -> sum(count_ones(color) for color in state),
+        "n^2" => state -> sum(count_ones(color) for color in state)^2,
+        "Filled States" => state -> count_ones(reduce(&, state)),
+        "Double Occupancies" => state -> count_double_occupancies(state, num_colors),
+        "na_nb" => state -> count_double_occupancies(state, num_colors),
+        # Correlation Functions
+        "niσ_njσ" => state -> begin
+            total = 0.0
 
-    observables["Energy"] = _ -> 0.0  # Will be handled specially
+            # For every edge
+            for (i, j) in Graphs.edges(graph)
+                # Make a mask with the bits for sites i and j set so we can easily extract them
+                mask = (1 << (i - 1)) | (1 << (j - 1))
+
+                # For every color, check if both sites are occupied
+                total += count(color -> color & mask == mask, state)
+            end
+
+            return total
+        end,
+        "niσ_njτ" => state -> begin
+            total = 0.0
+
+            # For every edge
+            for (i, j) in Graphs.edges(graph)
+                # Create bitmasks for site i and site j
+                imask = 1 << (i - 1)
+                jmask = 1 << (j - 1)
+
+                # For every pair of colors, check if site i is occupied in color σ and site j is occupied in color τ
+                for σ in 1:num_colors
+                    niσ = state[σ] & imask == imask
+
+                    for τ in 1:num_colors
+                        if σ != τ
+                            njτ = state[τ] & jmask == jmask
+
+                            total += niσ && njτ  # Julia will implicitly convert Bool to Int here
+                        end
+                    end
+                end
+            end
+
+            return total
+        end
+    )
 
     # Create a function to generate P_a (1-P_b) + P_b (1-P_a) type observables for any combination of colors
-    function p_function(n_check_colors)
-        function func(state)
-            # Create array of P_n
-            color_count_state = count_ones.(state)
-            # Create array of (1-P_n)
-            color_count_state_inverse = 1 .- color_count_state
-            total = 0.0
-            # For every combination of n_check_colors colors,
-            for color_combination in enumerate_states(num_colors, n_check_colors)
-                active_colors = digits(color_combination, base = 2, pad = num_colors)
-                # Take the product of P_n for the active colors and (1-P_n) for the inactive colors
-                total +=
-                    prod(active_colors .* color_count_state) *
-                    prod((1 .- active_colors) .* color_count_state_inverse)
-            end
-            # Normalize by num permutations
-            return total / binomial(num_colors, n_check_colors)
+    p_function(n_check_colors) = state -> begin
+        # Create array of P_n
+        color_count_state = count_ones.(state)
+        # Create array of (1-P_n)
+        color_count_state_inverse = 1 .- color_count_state
+        total = 0.0
+        # For every combination of n_check_colors colors,
+        for color_combination in enumerate_states(num_colors, n_check_colors)
+            active_colors = digits(color_combination, base = 2, pad = num_colors)
+            # Take the product of P_n for the active colors and (1-P_n) for the inactive colors
+            total +=
+                prod(active_colors .* color_count_state) *
+                prod((1 .- active_colors) .* color_count_state_inverse)
         end
-        return func
+        # Normalize by num permutations
+        return total / binomial(num_colors, n_check_colors)
     end
 
-    observables["P_a"] = p_function(1)
+    direct_observables["P_a"] = p_function(1)
     if num_colors >= 2
-        observables["P_ab"] = p_function(2)
+        direct_observables["P_ab"] = p_function(2)
     end
     if num_colors >= 3
-        observables["P_abc"] = p_function(3)
+        direct_observables["P_abc"] = p_function(3)
     end
 
     # Observables that can be calculated from other observables
-    derived_observables = Dict{String,Function}()
-    # Not well defined for more than 2 colors/NLCE
-    # derived_observables["Local Moment"] =
-    #     observable_data ->
-    #         @. observable_data["Num_Particles"] - 2 * observable_data["Filled States"]
-    # derived_observables["Density"] =
-    #     observable_data -> observable_data["Num_Particles"] ./ num_sites
-    derived_observables["Entropy"] = observable_data -> copy(observable_data["Energy"])  # Will be handled specially later
-    derived_observables["E^2"] = observable_data -> observable_data["Energy"] .^ 2
-    derived_observables["En"] =
-        observable_data -> observable_data["Energy"] .* observable_data["Num_Particles"]
+    derived_observables = Dict{String,observable_with_args_tmp_type}(
+        "C_spin" => (
+            ["niσ_njσ", "niσ_njτ"],
+            (same_neighbors, different_neighbors) ->
+                ((num_colors - 1) * same_neighbors - different_neighbors) /
+                # Normalize by number of edges
+                length(Graphs.edges(graph))
+        )
+    )
 
+    # Observables that depend on the energy
+    energy_dependent_observables = Dict{String,observable_tmp_type}(
+        "Energy" => (_, energy, _) -> energy,
+        "H" => (u, energy, n_particles) -> energy - (u * n_particles),
+        "E^2" => (_, energy, _) -> energy .^ 2,
+        "En" => (_, energy, n_particles) -> energy .* n_particles
+    )
+
+    # Observables that depend on the expectation values of other observables
+    expectation_derived_observables = Dict{String,observable_with_args_tmp_type}(
+        "Entropy" => (
+            ["H"],
+            (_, B, Z, internal_energy_expectation) -> @. log(Z)' + B * internal_energy_expectation
+        )
+    )
 
     # Additional Plots that can be directly calculated
-    overlays = Dict{String,Function}()
+    overlays = Dict{String,observable_tmp_type}()
 
     if num_sites == 1
         # Single-site Hubbard model exact solutions
@@ -131,57 +228,22 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
                 B * (energy(B, u) - (u + (U/2) * (num_colors - 1)) * rho(B, u))
     end
 
-
-    # Correlation Functions
-    # Base observables:
-    observables["niσ_njσ"] =
-        state -> begin
-            total = 0.0
-
-            # For every edge
-            for (i, j) in Graphs.edges(graph)
-                # Make a mask with the bits for sites i and j set so we can easily extract them
-                mask = (1 << (i - 1)) | (1 << (j - 1))
-
-                # For every color, check if both sites are occupied
-                total += count(color -> color & mask == mask, state)
-            end
-
-            return total
+    function to_observable(type, with_args)
+        if with_args
+            return ((args, func),) -> Observable(type, args, func)
+        else
+            return func -> Observable(type, String[], func)
         end
-    observables["niσ_njτ"] = state -> begin
-        total = 0.0
-
-        # For every edge
-        for (i, j) in Graphs.edges(graph)
-            # Create bitmasks for site i and site j
-            imask = 1 << (i - 1)
-            jmask = 1 << (j - 1)
-
-            # For every pair of colors, check if site i is occupied in color σ and site j is occupied in color τ
-            for σ in 1:num_colors
-                niσ = state[σ] & imask == imask
-
-                for τ in 1:num_colors
-                    if σ != τ
-                        njτ = state[τ] & jmask == jmask
-
-                        total += niσ && njτ  # Julia will implicitly convert Bool to Int here
-                    end
-                end
-            end
-        end
-
-        return total
     end
-    # The spin-spin nearest neighbors correlation function: sum_{i,j,σ≠τ} [ (N-1)<n(i,σ)n(j,σ)> - <n(i,σ)n(j,τ)> ]
-    derived_observables["C_spin"] =
-        observable_data ->
-            ((num_colors - 1) * observable_data["niσ_njσ"] - observable_data["niσ_njτ"]) /
-            # Normalize by number of edges
-            length(Graphs.edges(graph))
-
-    return observables, derived_observables, overlays
+    # Temporarily alias map so that we can convert all of the functions to Observables in one go.
+    map(f, d) = Utils.map_dict_values(Observable, f, d)
+    return merge(
+        map(to_observable(ObservableType_Direct, false), direct_observables),
+        map(to_observable(ObservableType_Derived, true), derived_observables),
+        map(to_observable(ObservableType_Energy_Dependent, false), energy_dependent_observables),
+        map(to_observable(ObservableType_Expectation_Derived, true), expectation_derived_observables),
+        map(to_observable(ObservableType_Overlay, false), overlays)
+    )
 end
 
 """
@@ -202,9 +264,7 @@ function diagonalize_and_compute_observables(
     u_vals::AbstractVector{Float64},
     config::TestConfiguration,
     graph::Graph,
-    observables::Dict{String,Function},
-    derived_observables::Dict{String,Function},
-    overlays::Dict{String,Function},
+    observables::Dict{String,Observable},
 )
     # Load parameters into the local scope
     num_colors = config.num_colors
@@ -226,35 +286,27 @@ function diagonalize_and_compute_observables(
     @debug "N_max_fermions=$N_max_fermions"
 
     """
-    	create_observable_data_map(include_derived::Bool, include_overlays::Bool, size::Int...)
+    	create_observable_data_map(include_list::Union{Nothing, AbstractVector{ObservableType}}, size::Int...)
 
-    include_derived: Whether to include derived observables in the map.
-    include_overlays: Whether to include overlay functions in the map.
+    include_list: list of observable types to include in the map or Nothing to include all types.
     size: The size of the vectors to create for each observable.
 
     A convenience function to create an empty map from observable names to data vectors.
     """
     # We're going to need a few of these. Might as well make it a function.
     function create_observable_data_map(
-        include_derived::Bool,
-        include_overlays::Bool,
+        include_list::Union{Nothing, AbstractVector{ObservableType}},
         size::Int...,
     )
-        storage_type = typeof(zeros(Float64, size))
+        number_type = Float64
+        storage_type = typeof(zeros(number_type, size))
         map = Dict{String,storage_type}()
-        for observable_name in keys(observables)
-            map[observable_name] = zeros(Float64, size)
-        end
-        if include_derived
-            for derived_name in keys(derived_observables)
-                map[derived_name] = zeros(Float64, size)
+        for (observable_name, observable) in observables
+            if include_list === nothing || observable.type in include_list
+                map[observable_name] = zeros(number_type, size)
             end
         end
-        if include_overlays
-            for overlay_name in keys(overlays)
-                map[overlay_name] = zeros(Float64, size)
-            end
-        end
+
         return map
     end
 
@@ -274,7 +326,11 @@ function diagonalize_and_compute_observables(
     num_computed_states = sum(block_sizes)
     weights = zeros(Float64, num_temps, num_computed_states)  # Weights for each state
     n_fermion_data = zeros(Int, num_computed_states)  # Number of fermions for each state (used for re-weighting)
-    observable_data = create_observable_data_map(false, false, num_computed_states)
+    energy_data = zeros(Float64, num_computed_states)  # Energy for each state (used for energy-dependent observables)
+    observable_data = create_observable_data_map(
+        [ObservableType_Direct],
+        num_computed_states,
+    )
 
     @info "Computing Hamiltonian blocks and observables..."
     # The number of fermions and the color configuration are conserved over tunneling,
@@ -284,7 +340,7 @@ function diagonalize_and_compute_observables(
         # Size of the Hamiltonian block
         L = block_sizes[config_idx]
         H = SymmetricMatrix(L)  # Use custom "SymmetricMatrix" type to save memory at the cost of speed
-        observables_basis = create_observable_data_map(false, false, L)  # Compute the observables for each state as we build the matrix
+        observables_basis = create_observable_data_map([ObservableType_Direct], L)  # Compute the observables for each state as we build the matrix
 
         # Compute Hamiltonian matrix elements between all pairs of states
         # enumerate_multistate returns elements in a consistent order, so
@@ -379,9 +435,9 @@ function diagonalize_and_compute_observables(
             end
 
             # Now that we've constructed the row for state_i, compute the observables
-            for (observable_name, observable_function) in observables
+            for observable_name in keys(observables_basis)
                 # Pre-compute the observable for this basis state
-                observables_basis[observable_name][i] = observable_function(state_i)
+                observables_basis[observable_name][i] = observables[observable_name].func(state_i)
             end
         end
 
@@ -423,18 +479,14 @@ function diagonalize_and_compute_observables(
             weight = num_permutations * exp.(-B * eigen_val)
             weights[:, idx] = weight
             n_fermion_data[idx] = N_fermions
+            energy_data[idx] = eigen_val
 
             # Compute each observable for this state
             for (observable_name, observable_basis_data) in observables_basis
-                if observable_name == "Energy"
-                    # The energy is just the eigenvalue
-                    observable_data[observable_name][idx] = eigen_val
-                else
-                    # Because we already computed the observables for each basis state,
-                    # we can just do a weighted sum over those based on the eigenvector components
-                    observable_value = sum(@. observable_basis_data * eigen_vec * eigen_vec)
-                    observable_data[observable_name][idx] = observable_value
-                end
+                # Because we already computed the observables for each basis state,
+                # we can just do a weighted sum over those based on the eigenvector components
+                observable_value = sum(@. observable_basis_data * eigen_vec * eigen_vec)
+                observable_data[observable_name][idx] = observable_value
             end
         end
     end
@@ -443,17 +495,18 @@ function diagonalize_and_compute_observables(
 
     @info "Computing derived observables..."
 
-
     # First, update the energy so derived observables can use it.
     # The free energy is H + u * N. At each observed energy state, N is const,
     # we can just add u_test * N to each eigenvalue to get the corrected energy.
-    observable_data["Energy"] .+= u_test * n_fermion_data
+    energy_data .+= u_test * n_fermion_data
     @debug begin
-        "  Updated Energy data: $(observable_data["Energy"])"
+        "  Updated Energy data: $energy_data"
     end
 
-    for (observable_name, observable_function) in derived_observables
-        observable_data[observable_name] = observable_function(observable_data)
+    for (observable_name, observable) in observables
+        if observable.type == ObservableType_Derived
+            observable_data[observable_name] = observable.func(getindex.((observable_data,), observable.args)...)
+        end
     end
 
     @debug begin
@@ -472,8 +525,14 @@ function diagonalize_and_compute_observables(
     weights = weights'
 
     u_shift = (U/2) * (num_colors - 1)  # Shift observables so that density=N/2 at u=0
+
+    # Calculate the ground-state energy
+    E0 = minimum(@. energy_data - (u_shift * n_fermion_data))
+
+    @info "E0: $E0"
+
     # Create a new container to store the observable values at each u
-    computed_observable_values = create_observable_data_map(true, true, num_temps, num_us)
+    computed_observable_values = create_observable_data_map(nothing, num_temps, num_us)
     @threads for (i, u) in collect(enumerate(u_vals))
         # The value that has to be added to u_test to shift to the desired u
         u_datapoint_shift = u - u_test + u_shift
@@ -493,20 +552,17 @@ function diagonalize_and_compute_observables(
             "u=$u, corrected_weights=$corrected_weights, Z=$Z"
         end
 
-        # Compute each observable
-        for (observable_name, observable_values) in observable_data
-            if observable_name == "Entropy"
-                # The entropy requires a special calculation.
-                # For now, we'll just calculate the internal energy
-                # observable_values will contain the energy from the definition of the entropy function above,
-                # So we can just add the u * N back to get the internal energy
-                # We want to exclude the u_test term from this because it was already removed
-                # in the energy correction calculation
-                observable_values =
-                    (-(u_datapoint_shift + u_test) * n_fermion_data) .+ observable_values
-            end
+        # Compute any observables that depend on the energy
+        energy_dependent_observable_values = create_observable_data_map([ObservableType_Energy_Dependent], num_computed_states)
+        for observable_name in keys(energy_dependent_observable_values)
+            observable = observables[observable_name]
+            # Get the observable value for each state
+            observable_values = observable.func(u + u_shift, energy_data, n_fermion_data)
+            energy_dependent_observable_values[observable_name][:] = observable_values
+        end
 
-            # Compute the expectation value of each observable
+        # Compute the expectation value of each observable
+        for (observable_name, observable_values) in merge(observable_data, energy_dependent_observable_values)
             expectation_values = sum(corrected_weights .* observable_values; dims = 1)
             normalized_expectation_values = expectation_values ./ Z
 
@@ -518,17 +574,17 @@ function diagonalize_and_compute_observables(
                 normalized_expectation_values'
         end
 
-        # From above, we have the internal energy, so use that to calculate the entropy
-        internal_energy_expectations = computed_observable_values["Entropy"][:, i]
-        entropy_expectation = @. B * internal_energy_expectations + log(Z)'
-        computed_observable_values["Entropy"][:, i] .= entropy_expectation
-
-        @debug begin
-            "  Entropy: $entropy_expectation (Internal Energy Expectation: $internal_energy_expectations)"
-        end
-
-        for (overlay_name, overlay_function) in overlays
-            computed_observable_values[overlay_name][:, i] = overlay_function.(B, u)
+        # Finally, compute the remaining types observables (those that depend on the expectation values or are overlays)
+        for (observable_name, observable) in observables
+            if observable.type == ObservableType_Expectation_Derived
+                # Get the arguments for this observable from the computed_observable_values
+                args = getindex.((computed_observable_values,), observable.args)
+                # Compute the observable value at this u for each temperature
+                computed_observable_values[observable_name][:, i] .=
+                    observable.func(u + u_shift, B, Z, view.(args, :, i)...)
+            elseif observable.type == ObservableType_Overlay
+                computed_observable_values[observable_name][:, i] = observable.func.(B, u)
+            end
         end
     end
 

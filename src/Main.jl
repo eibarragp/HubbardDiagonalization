@@ -1,6 +1,6 @@
 # Include Libraries
 using HubbardDiagonalization:
-    CSVUtil, DataHelpers, Graphs, Graphs.Graph, ExactDiagonalization as ED
+    CSVUtil, DataHelpers, Graphs, Graphs.Graph, Utils, ExactDiagonalization as ED
 
 import CSV
 import JSON3 as JSON
@@ -84,7 +84,7 @@ function (@main)(args)
     plot_config = config["plot"]
     graph_config = config["graph"]
 
-    test_config = ED.TestConfiguration(; DataHelpers.convert_strings_to_symbols(params)...)
+    test_config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params)...)
     t_vals = plot_config["T_min"]:plot_config["T_step"]:plot_config["T_max"]
     u_vals = plot_config["u_min"]:plot_config["u_step"]:plot_config["u_max"]
 
@@ -122,8 +122,7 @@ function (@main)(args)
             @info "Running with $(nthreads()) threads."
         end
 
-        observables, derived_observables, overlays =
-            ED.default_observables(test_config, graph)
+        observables = ED.default_observables(test_config, graph)
         @info "Defined observables: $(union(keys(observables), keys(derived_observables), keys(overlays)))"
 
         observable_data = ED.diagonalize_and_compute_observables(
@@ -132,8 +131,6 @@ function (@main)(args)
             test_config,
             graph,
             observables,
-            derived_observables,
-            overlays,
         )
 
         # If we're not using NLCE,

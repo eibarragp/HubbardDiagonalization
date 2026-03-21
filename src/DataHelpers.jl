@@ -15,19 +15,6 @@ if use_unicode_plots
 end
 
 """
-    convert_strings_to_symbols(dict::Dict{String,Any}) -> Dict{Symbol,Any}
-
-Convert the keys of a dictionary from `String` to `Symbol`. This allows a dictionary loaded from a TOML file to be used as a keyword argument list.
-"""
-function convert_strings_to_symbols(dict::Dict{String,Any})
-    new_dict = Dict{Symbol,Any}()
-    for (key, value) in dict
-        new_dict[Symbol(key)] = value
-    end
-    return new_dict
-end
-
-"""
     export_observable_data(
         plot_config::Dict{String,Any},
         T_vals::AbstractVector{Float64},
@@ -145,9 +132,9 @@ function export_observable_data(
                 ylabel = "Observable Value",
                 title = join(observables, ", "),
                 # Only show legend if it would be confusing without one
-                legend_position = length(observables) > 1 ||
-                                  (using_nlce ? true :
-                                  length(csv_overlays) > 0 && csv_index != -1),
+                legend_position = length(observables) > 1 || (
+                    using_nlce ? true : length(csv_overlays) > 0 && csv_index != -1
+                ),
                 size = (plot_width, plot_height),
             )
             # Add each observable
