@@ -225,13 +225,9 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
             (B, u) -> log(z0(B, u)) + B * (energy(B, u) - u * rho(B, u))
     end
 
-    function to_observable(type, with_args)
-        if with_args
-            return ((args, func),) -> Observable(type, args, func)
-        else
-            return func -> Observable(type, String[], func)
-        end
-    end
+    to_observable(type, with_args) = with_args ?
+        ((args, func),) -> Observable(type, args, func) :
+        func -> Observable(type, String[], func)
     # Temporarily alias map so that we can convert all of the functions to Observables in one go.
     map(f, d) = Utils.map_dict_values(Observable, f, d)
     return merge(
