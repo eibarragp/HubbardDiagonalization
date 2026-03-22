@@ -225,17 +225,23 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
             (B, u) -> log(z0(B, u)) + B * (energy(B, u) - u * rho(B, u))
     end
 
-    to_observable(type, with_args) = with_args ?
-        ((args, func),) -> Observable(type, args, func) :
+    # Define some temporary functions to convert the above functions into Observables in what I think is a more-readable way.
+    to_observable(type, with_args) =
+        with_args ? ((args, func),) -> Observable(type, args, func) :
         func -> Observable(type, String[], func)
-    # Temporarily alias map so that we can convert all of the functions to Observables in one go.
     map(f, d) = Utils.map_dict_values(Observable, f, d)
     return merge(
         map(to_observable(ObservableType_Direct, false), direct_observables),
         map(to_observable(ObservableType_Derived, true), derived_observables),
-        map(to_observable(ObservableType_Energy_Dependent, false), energy_dependent_observables),
-        map(to_observable(ObservableType_Expectation_Derived, true), expectation_derived_observables),
-        map(to_observable(ObservableType_Overlay, false), overlays)
+        map(
+            to_observable(ObservableType_Energy_Dependent, false),
+            energy_dependent_observables,
+        ),
+        map(
+            to_observable(ObservableType_Expectation_Derived, true),
+            expectation_derived_observables,
+        ),
+        map(to_observable(ObservableType_Overlay, false), overlays),
     )
 end
 
