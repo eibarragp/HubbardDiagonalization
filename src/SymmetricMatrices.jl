@@ -33,13 +33,10 @@ function index(mat::SymmetricMatrix, i::Int, j::Int)
     if j < i
         i, j = j, i
     end
-    # Work around julia's 1-based indexing
-    i -= 1
-    j -= 1
     # The number of elements in the jth column (0-indexed) is j+1, so the number of elements in
-    # all previous columns is the sum of the first j integers (j*(j+1)/2). Then add i to get the row offset,
-    # and add 1 to convert back to 1-based indexing.
-    return ((j * (j + 1) ÷ 2) + i) + 1
+    # all previous columns is the sum of the first j integers (j*(j+1)/2). Then add i to get the row offset.
+    # Finally, transform i->i-1 and j->j-1 and add 1 to convert back to 1-based indexing. Simplifying gives:
+    return (j * (j - 1) ÷ 2) + i
 end
 
 # Implement some core functions of the AbstractMatrix interface
