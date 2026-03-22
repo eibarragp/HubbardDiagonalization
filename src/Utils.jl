@@ -20,7 +20,8 @@ Applies a function to the values of a dictionary, returning a new dictionary wit
 f: The function to apply to the values.
 dict: The dictionary whose values should be transformed.
 """
-map_dict_values(::Type{T}, f::Function, dict::Dict{K,V}) where {K,V,T} = Dict{K,T}((k, T(f(v))) for (k, v) in dict)
+map_dict_values(::Type{T}, f::Function, dict::Dict{K,V}) where {K,V,T} =
+    Dict{K,T}((k, T(f(v))) for (k, v) in dict)
 map_dict_values(f::Function, dict::Dict{K,V}) where {K,V} = map_dict_values(Any, f, dict)
 
 end

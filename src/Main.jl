@@ -85,8 +85,14 @@ function (@main)(args)
     graph_config = config["graph"]
 
     test_config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params)...)
-    t_vals = Float64(plot_config["T_min"]):Float64(plot_config["T_step"]):Float64(plot_config["T_max"])
-    u_vals = Float64(plot_config["u_min"]):Float64(plot_config["u_step"]):Float64(plot_config["u_max"])
+    t_vals =
+        Float64(plot_config["T_min"]):Float64(plot_config["T_step"]):Float64(
+            plot_config["T_max"],
+        )
+    u_vals =
+        Float64(plot_config["u_min"]):Float64(plot_config["u_step"]):Float64(
+            plot_config["u_max"],
+        )
 
     if parsed_args["%COMMAND%"] == "diagonalize"
         # Parse the given cluster data to a graph
