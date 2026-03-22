@@ -561,7 +561,7 @@ function diagonalize_and_compute_observables(
             observable = observables[observable_name]
             # Get the observable value for each state
             observable_values = observable.func(u_shifted, energy_data, n_fermion_data)
-            energy_dependent_observable_values[observable_name][:] = observable_values
+            energy_dependent_observable_values[observable_name] = observable_values
         end
 
         # Compute the expectation value of each observable
