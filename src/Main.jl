@@ -152,10 +152,7 @@ function (@main)(args)
         data_dirs = parsed_args["merge"]["datadirs"]
 
         # For merging, we only need to know the names of the observables to merge
-        observable_names = String[]
-        for ((observables, _)) in plot_config["observables"]
-            append!(observable_names, observables)
-        end
+        observable_names = reduce(union, map(first, plot_config["observables"]))
 
         observable_data = DataHelpers.merge_results_with_nlce(
             cluster_file,
