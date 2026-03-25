@@ -6,16 +6,16 @@ U = 8.0
 
 [plot]
 # Plot Characteristics
-width = 1000
-height = 800
+width = 1500
+height = 1200
 
 # Ranges
-T_min = 20
-T_max = 100
+T_min = 0.02
+T_max = 10
 T_step = 0.02
-u_min = -20
-u_max = 20
-u_step = 0.05
+u_min = -1
+u_max = 1
+u_step = 0.5
 
 # Specific Plots to Generate
 T_fixed_plots = [0.02, 0.1, 0.5]
@@ -29,9 +29,13 @@ observables = [
 	[["Energy"], ["Energies"]],
 	[["Entropy"], ["Entropies"]],
 	[["n^2"], []],
-	[["E^2"], []],
-	[["En"], []],
-	[["na_nb"], []]
+	[["H^2"], []],
+	[["Hn"], []],
+	[["na_nb"], []],
+	[["Δn^2"], []],
+	[["ΔH^2"], []],
+	[["H"], []],
+	[["Specific Heat"], []],
 ]
 
 overlay_data = "none"
@@ -39,4 +43,4 @@ overlay_data = "none"
 nlce_orders = [2, 3, 4]
 
 [graph]
-num_sites = 4
+num_sites = 1

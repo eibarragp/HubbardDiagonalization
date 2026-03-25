@@ -21,8 +21,8 @@ using Base.Threads
         - func should accept the observable values listed in args (in order) as arbitrary-length arrays
             and perform element-wise operations to compute the derived observable.
     - Energy_Dependent: An observable that is computed directly from the basis states and eigenvalues.
-        - func should be a function that takes a value of mu, and an extrinsic energy and the number of particles,
-            both as arrays with the same length. It should then perform element-wise operations to compute the derived observable.
+        - func should be a function that takes a value of mu; and an extrinsic energy, intrinsic energy, and the number of particles,
+            all as arrays containing the value at each temperature. It should then perform element-wise operations to compute the derived observable.
             args is unused.
     - Expectation_Derived: An observable that is computed from the expectation values of other observables
         - func should accept (in-order) the value of u, a vector of beta values, the value of the partition function,
@@ -196,10 +196,10 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
 
     # Observables that depend on the energy
     energy_dependent_observables = Dict{String,observable_tmp_type}(
-        "Energy" => (_, energy, _) -> energy,
-        "H" => (u, energy, n_particles) -> energy - (u * n_particles),
-        "E^2" => (_, energy, _) -> energy .^ 2,
-        "En" => (_, energy, n_particles) -> energy .* n_particles,
+        "Energy" => (_, energy, _, _) -> energy,
+        "H" => (_, _, H, _) -> H,
+        "H^2" => (_, _, H, _) -> H .^ 2,
+        "Hn" => (_, _, H, n_particles) -> H .* n_particles,
     )
 
     # Observables that depend on the expectation values of other observables
@@ -208,6 +208,13 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
             ["H"],
             (_, B, Z, internal_energy_expectation) ->
                 @. log(Z)' + B * internal_energy_expectation
+        ),
+        "ΔH^2" => (["H", "H^2"], (_, _, _, H, H2) -> @. H2 - (H^2)),
+        "Δn^2" => (["Num_Particles", "n^2"], (_, _, _, n, n2) -> @. n2 - (n^2)),
+        "Specific Heat" => (
+            ["Num_Particles", "n^2", "H", "H^2", "Hn"],
+            (_, B, _, n, n2, H, H2, Hn) ->
+                @. B^2 * ((H2 - H^2) - (Hn - n * H)^2 / (n2 - n^2))
         ),
     )
 
@@ -559,6 +566,9 @@ function diagonalize_and_compute_observables(
             "u=$u, corrected_weights=$corrected_weights, Z=$Z"
         end
 
+        # The intrinsic energy is also used a lot of these, so just precompute it here.
+        H = energy_data - (u_shifted * n_fermion_data)
+
         # Compute any observables that depend on the energy
         energy_dependent_observable_values = create_observable_data_map(
             [ObservableType_Energy_Dependent],
@@ -567,7 +577,7 @@ function diagonalize_and_compute_observables(
         for observable_name in keys(energy_dependent_observable_values)
             observable = observables[observable_name]
             # Get the observable value for each state
-            observable_values = observable.func(u_shifted, energy_data, n_fermion_data)
+            observable_values = observable.func(u_shifted, energy_data, H, n_fermion_data)
             energy_dependent_observable_values[observable_name] = observable_values
         end
 
