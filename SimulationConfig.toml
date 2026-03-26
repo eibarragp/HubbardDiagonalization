@@ -1,8 +1,8 @@
 [parameters]
-num_colors = 3
-t = 1
+num_colors = 2
+t = 1.4
 u_test = 0.0
-U = 8.0
+U = 8.17
 
 [plot]
 # Plot Characteristics
@@ -19,15 +19,15 @@ u_step = 0.5
 
 # Specific Plots to Generate
 T_fixed_plots = [0.02, 0.1, 0.5]
-u_fixed_plots = [-0.5, 0.0, 0.5]
+u_fixed_plots = [-0.5, 0.0, 0.5, 4]
 # Observables to Plot in the format:
 # [subplots]
 # where each subplot is:
 #   [[generated observable names], [csv data names (from overlay_data)]]
 observables = [
 	[["Num_Particles"], []],
-	[["Energy"], ["Energies"]],
-	[["Entropy"], ["Entropies"]],
+	[["Energy", "Actual Energy"], ["Energies"]],
+	[["Entropy", "Actual Entropy"], ["Entropies"]],
 	[["n^2"], []],
 	[["H^2"], []],
 	[["Hn"], []],
@@ -36,6 +36,8 @@ observables = [
 	[["ΔH^2"], []],
 	[["H"], []],
 	[["Specific Heat"], []],
+	[["Compressibility"], []],
+	[["C_spin"], []]
 ]
 
 overlay_data = "none"

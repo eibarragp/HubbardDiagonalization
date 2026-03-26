@@ -216,6 +216,10 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
             (_, B, _, n, n2, H, H2, Hn) ->
                 @. B^2 * ((H2 - H^2) - (Hn - n * H)^2 / (n2 - n^2))
         ),
+        "Compressibility" => (
+            ["Num_Particles", "n^2"],
+            (u, B, Z, n, n2) -> @. B * (n2 - n^2)
+        ),
     )
 
     # Additional Plots that can be directly calculated
