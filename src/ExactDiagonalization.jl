@@ -188,9 +188,10 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
         "C_spin" => (
             ["niσ_njσ", "niσ_njτ"],
             (same_neighbors, different_neighbors) ->
+                length(Graphs.edges(graph)) == 0 ?
                 ((num_colors - 1) * same_neighbors - different_neighbors) /
                 # Normalize by number of edges
-                length(Graphs.edges(graph)),
+                length(Graphs.edges(graph)) : 0,
         ),
     )
 
