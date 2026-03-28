@@ -264,6 +264,9 @@ function apply_normalizations!(observable_data::Dict{String,Matrix{Float64}}, gr
     num_sites = Graphs.num_sites(graph)
     num_edges = length(Graphs.edges(graph))
 
+    if haskey(observable_data, "Density")
+        observable_data["Density"] ./= num_sites
+    end
     if haskey(observable_data, "Energy")
         observable_data["Energy"] ./= num_sites
     end
