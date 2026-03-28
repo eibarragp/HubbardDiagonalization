@@ -141,9 +141,8 @@ function (@main)(args)
 
         # If we're not using NLCE,
         if parsed_args["%COMMAND%"] == "simple"
-            # Normalize energy and entropy per site
-            observable_data["Energy"] ./= Graphs.num_sites(graph)
-            observable_data["Entropy"] ./= Graphs.num_sites(graph)
+            # Normalize the observables
+            ED.apply_normalizations!(observable_data, graph)
         end
         # Otherwise, we must report the extrinsic energy to the merger,
         # and NLCE will take care of the normalization for us.

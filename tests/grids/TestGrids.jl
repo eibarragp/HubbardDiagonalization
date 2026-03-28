@@ -182,6 +182,7 @@ function run_test_set!(
         graph,
         observables,
     )
+    ED.apply_normalizations!(results, graph)
     disable_logging(Logging.Debug)
 
     # Compare results!
@@ -216,13 +217,6 @@ function run_test_set!(
         valid_indices = @. !isnan(expected) && !isnan(computed)
         expected = expected[valid_indices]
         computed = computed[valid_indices]
-
-        # Some observables are normalized by the number of sites
-        if observable_name == "Energy" ||
-           observable_name == "Entropy" ||
-           observable_name == "Num_Particles"
-            computed ./= Graphs.num_sites(graph)
-        end
 
         # Provided correlation data is scaled by a factor of 2
         if observable_name == "C_spin"
