@@ -219,7 +219,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
         ),
         "Compressibility" => (
             ["Num_Particles", "n^2"],
-            (u, B, Z, n, n2) -> @. B * (n2 - n^2)
+            (_, B, _, n, n2) -> @. B * (n2 - n^2)
         ),
     )
 
