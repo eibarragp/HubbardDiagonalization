@@ -10,8 +10,8 @@ width = 1500
 height = 1200
 
 # Ranges
-T_min = 0.02
-T_max = 10
+T_min = 2
+T_max = 25
 T_step = 0.02
 u_min = -1
 u_max = 1
@@ -25,9 +25,9 @@ u_fixed_plots = [-0.5, 0.0, 0.5, 4]
 # where each subplot is:
 #   [[generated observable names], [csv data names (from overlay_data)]]
 observables = [
-	[["Num_Particles"], []],
-	[["Energy", "Actual Energy"], ["Energies"]],
-	[["Entropy", "Actual Entropy"], ["Entropies"]],
+	[["Density"], []],
+	[["Energy"], ["Energies"]],
+	[["Entropy"], ["Entropies"]],
 	[["n^2"], []],
 	[["H^2"], []],
 	[["Hn"], []],
@@ -37,7 +37,9 @@ observables = [
 	[["H"], []],
 	[["Specific Heat"], []],
 	[["Compressibility"], []],
-	[["C_spin"], []]
+	[["C_spin"], []],
+	[["niσ_njσ"], []],
+	[["niσ_njτ"], []]
 ]
 
 overlay_data = "none"

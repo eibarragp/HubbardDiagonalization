@@ -17,7 +17,7 @@ function (@main)(args)
     datasets = ["./tests/grids/N2_grids.zip", "./tests/grids/2x2_ED_Repulsive_SUN_OBC.zip"]
     # Setup mappings between result names and csv files
     test_observables = Dict(
-        "Num_Particles" => "Densities.csv", # Will be normalized by number of sites in the comparison
+        "Density" => "Densities.csv", # Will be normalized by number of sites in the comparison
         "Double Occupancies" => "Doubleoccupancies.csv",
         "Energy" => "Energies.csv",
         "Entropy" => "Entropies.csv",

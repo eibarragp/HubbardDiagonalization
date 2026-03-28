@@ -107,7 +107,7 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
     observable_with_args_tmp_type = Tuple{AbstractVector{String},Function}
 
     direct_observables = Dict{String,observable_tmp_type}(
-        "Num_Particles" => state -> sum(count_ones(color) for color in state),
+        "Density" => state -> sum(count_ones(color) for color in state),
         "n^2" => state -> sum(count_ones(color) for color in state)^2,
         "Filled States" => state -> count_ones(reduce(&, state)),
         "Double Occupancies" => state -> count_double_occupancies(state, num_colors),
@@ -208,14 +208,14 @@ function default_observables(test_config::TestConfiguration, graph::Graph)
                 @. log(Z)' + B * internal_energy_expectation
         ),
         "ΔH^2" => (["H", "H^2"], (_, _, _, H, H2) -> @. H2 - (H^2)),
-        "Δn^2" => (["Num_Particles", "n^2"], (_, _, _, n, n2) -> @. n2 - (n^2)),
+        "Δn^2" => (["Density", "n^2"], (_, _, _, n, n2) -> @. n2 - (n^2)),
         "Specific Heat" => (
-            ["Num_Particles", "n^2", "H", "H^2", "Hn"],
+            ["Density", "n^2", "H", "H^2", "Hn"],
             (_, B, _, n, n2, H, H2, Hn) ->
                 @. B^2 * ((H2 - H^2) - (Hn - n * H)^2 / (n2 - n^2))
         ),
         "Compressibility" =>
-            (["Num_Particles", "n^2"], (_, B, _, n, n2) -> @. B * (n2 - n^2)),
+            (["Density", "n^2"], (_, B, _, n, n2) -> @. B * (n2 - n^2)),
     )
 
     # Additional Plots that can be directly calculated
