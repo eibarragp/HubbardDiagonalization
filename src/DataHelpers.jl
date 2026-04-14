@@ -5,6 +5,7 @@ import ..ExactDiagonalization as ED
 
 import CSV
 import JSON3 as JSON
+import Logging
 
 # Set up plotting backend
 using Plots
@@ -314,6 +315,29 @@ function sorted_clusters(cluster_data::AbstractDict)
         # Then sort by id
         return a[4] < b[4]
     end)
+end
+
+# We need to flush the output stream in order to ensure that logs are written in a timely manner
+# Yes, it's insane that we need to implement this ourselves.
+# Modified from LoggingExtras.FileLogger
+struct FlushingLogger <: Logging.AbstractLogger
+    logger::Logging.ConsoleLogger
+    stream::IO
+end
+
+FlushingLogger(stream::IO, args...; kwargs...) = FlushingLogger(Logging.ConsoleLogger(stream, args...; kwargs...), stream)
+Logging.shouldlog(logger::FlushingLogger, args...) = Logging.shouldlog(logger.logger, args...)
+Logging.min_enabled_level(logger::FlushingLogger) = Logging.min_enabled_level(logger.logger)
+Logging.catch_exceptions(logger::FlushingLogger) = Logging.catch_exceptions(logger.logger)
+
+function Logging.handle_message(logger::FlushingLogger, level, args...; kwargs...)
+    Logging.handle_message(logger.logger, level, args...; kwargs...)
+
+    # Only flush Info and above messages to avoid excessive flushing for debug messages
+    # Info messages should be rare enough that this won't cause major performance issues.
+    if level >= Logging.Info
+        flush(logger.stream)
+    end
 end
 
 end

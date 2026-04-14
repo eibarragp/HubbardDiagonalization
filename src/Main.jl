@@ -75,7 +75,7 @@ function (@main)(args)
 
     # Install our own logger for the duration of the program
     old_logger =
-        Logging.global_logger(Logging.ConsoleLogger(stdout, parsed_args["loglevel"]))
+        Logging.global_logger(DataHelpers.FlushingLogger(stdout, parsed_args["loglevel"]))
 
     # Parse configuration file
     config = TOML.parsefile("SimulationConfig.toml")
