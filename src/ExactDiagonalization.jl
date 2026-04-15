@@ -67,6 +67,8 @@ Observable(o::Observable) = o
     u_test::Float64
     U::Float64
 end
+Base.:(==)(a::TestConfiguration, b::TestConfiguration) =
+    a.num_colors == b.num_colors && a.t == b.t && a.u_test == b.u_test && a.U == b.U
 
 """
     count_double_occupancies(state::Vector{Int}, num_colors::Int) -> Int
