@@ -377,9 +377,7 @@ function diagonalize_and_compute_observables(
                          collect(enumerate(system_configurations))
         # Size of the Hamiltonian block
         L = block_sizes[config_idx]
-        H = use_cuda ?
-            CUDA.CuArray{Float64}(L, L) :
-            SymmetricMatrix(L)  # Use custom "SymmetricMatrix" type to save memory at the cost of speed
+        H = zeros(Float64, L, L)
         observables_basis = create_observable_data_map([ObservableType_Direct], L)  # Compute the observables for each state as we build the matrix
 
         # Compute Hamiltonian matrix elements between all pairs of states
@@ -489,7 +487,7 @@ function diagonalize_and_compute_observables(
         end
 
         eigen_values, eigen_vectors = if use_cuda
-            CUDA.CUSOLVER.Xsyevd!('V', 'U', H)
+            CUDA.CUSOLVER.Xsyevd!('V', 'U', CUDA.CuArray(H))
         else
             # Diagonalize the Hamiltonian block
             H_symmetric_view = LinearAlgebra.Symmetric(H, :U)
