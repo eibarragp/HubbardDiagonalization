@@ -292,6 +292,7 @@ end
         observables::Dict{String,Function},
         derived_observables::Dict{String,Function},
         overlays::Dict{String,Function},
+        use_cuda::Bool = false,
     ) -> Dict{String,Matrix{Float64}}
 
 Performs the exact diagonalization of the Hubbard Hamiltonian and computes the specified observables (see default_observables() for specification) over the given ranges of temperature and chemical potential.
@@ -302,6 +303,7 @@ function diagonalize_and_compute_observables(
     config::TestConfiguration,
     graph::Graph,
     observables::Dict{String,Observable},
+    use_cuda::Bool = false,
 )
     # Load parameters into the local scope
     num_colors = config.num_colors
@@ -374,7 +376,9 @@ function diagonalize_and_compute_observables(
                          collect(enumerate(system_configurations))
         # Size of the Hamiltonian block
         L = block_sizes[config_idx]
-        H = SymmetricMatrix(L)  # Use custom "SymmetricMatrix" type to save memory at the cost of speed
+        H = use_cuda ?
+            CUDA.CuArray{Float64}(L, L) :
+            SymmetricMatrix(L)  # Use custom "SymmetricMatrix" type to save memory at the cost of speed
         observables_basis = create_observable_data_map([ObservableType_Direct], L)  # Compute the observables for each state as we build the matrix
 
         # Compute Hamiltonian matrix elements between all pairs of states
@@ -483,13 +487,18 @@ function diagonalize_and_compute_observables(
             "N_fermions=$N_fermions, color_configuration=$(color_configuration), L=$L, num_configuration_permutations=$(num_permutations), H=$H"
         end
 
-        # Diagonalize the Hamiltonian block
-        H_symmetric_view = LinearAlgebra.Symmetric(H, :U)
-        # Annoyingly, eigen() forces us to store all the eigenvectors
-        # in memory at once, but I can't find a good way around this
-        # Even the builtin `eigvals`/`eigvecs` functions are just
-        # wrappers around this.
-        eigen_data = LinearAlgebra.eigen(H_symmetric_view)
+        eigen_values, eigen_vectors = if use_cuda
+            CUDA.CUSOLVER.Xsyevd!('V', 'U', H)
+        else
+            # Diagonalize the Hamiltonian block
+            H_symmetric_view = LinearAlgebra.Symmetric(H, :U)
+            # Annoyingly, eigen() forces us to store all the eigenvectors
+            # in memory at once, but I can't find a good way around this
+            # Even the builtin `eigvals`/`eigvecs` functions are just
+            # wrappers around this.
+            eigen_data = LinearAlgebra.eigen(H_symmetric_view)
+            eigen_data.values, eigen_data.vectors
+        end
 
         @debug begin
             msg = "observable_basis_data:\n"
@@ -502,7 +511,7 @@ function diagonalize_and_compute_observables(
         # Compute and store observables for each eigen-state
         offset = size_offset[config_idx]
         for (i, (eigen_val, eigen_vec)) in
-            enumerate(zip(eigen_data.values, eachcol(eigen_data.vectors)))
+            enumerate(zip(eigen_values, eachcol(eigen_vectors)))
             @debug begin
                 "  eigen_val=$eigen_val, eigen_vec=$eigen_vec"
             end

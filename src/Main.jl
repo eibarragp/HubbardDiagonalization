@@ -2,6 +2,7 @@
 using HubbardDiagonalization:
     CSVUtil, DataHelpers, Graphs, Graphs.Graph, Utils, ExactDiagonalization as ED
 
+import CUDA
 import CSV
 import JSON3 as JSON
 import Logging
@@ -27,6 +28,9 @@ function parse_cli()
         help = "Directory to save output files to"
         arg_type = String
         default = "output"
+        "--cuda"
+        help = "Use CUDA"
+        action = :store_true
         "diagonalize"
         help = "Diagonalize and compute observables for the specified cluster"
         action = :command
@@ -122,10 +126,22 @@ function (@main)(args)
     if @isdefined(graph)
         # Multithreading will really only be useful for diagonalization.
         # Merging should basically be adding up <100 matrices, which is comparatively fast
-        if nthreads() == 1
-            @warn "Running in single-threaded mode. For better performance, consider setting the JULIA_NUM_THREADS environment variable to a higher value."
+        if parsed_args["cuda"]
+            if CUDA.functional()
+                if nthreads() == 1
+                    @info "Running with CUDA on 1 thread."
+                else
+                    @warn "Running on CUDA with $(nthreads()) threads. Be prepared for high memory usage!"
+                end
+            else
+                error("CUDA flag was set, but CUDA is not functional on this machine!")
+            end
         else
-            @info "Running with $(nthreads()) threads."
+            if nthreads() == 1
+                @warn "Running in single-threaded mode. For better performance, consider setting the JULIA_NUM_THREADS environment variable to a higher value."
+            else
+                @info "Running with $(nthreads()) threads."
+            end
         end
 
         observables = ED.default_observables(test_config, graph)
@@ -137,6 +153,7 @@ function (@main)(args)
             test_config,
             graph,
             observables,
+            parsed_args["cuda"],
         )
 
         # If we're not using NLCE,
