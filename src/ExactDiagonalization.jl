@@ -9,6 +9,7 @@ using ..SymmetricMatrices
 import ..Utils
 
 import CSV
+import Dates
 import LinearAlgebra
 
 using Base.Threads
@@ -524,6 +525,8 @@ function diagonalize_and_compute_observables(
                 observable_data[observable_name][idx] = observable_value
             end
         end
+
+        @info "Computed data for block $config_idx/$(length(system_configurations)) at $(Dates.now())"
     end
 
     @info "Computed data for $num_computed_states states."
