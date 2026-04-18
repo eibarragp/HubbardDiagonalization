@@ -8,6 +8,7 @@ using ..StateEnumeration
 using ..SymmetricMatrices
 import ..Utils
 
+import CUDA
 import CSV
 import Dates
 import LinearAlgebra
