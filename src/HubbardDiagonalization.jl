@@ -1,5 +1,9 @@
 module HubbardDiagonalization
 
+# Plots must be imported before CUDA to prevent a dependency conflict with the GR backend.
+import Plots
+import CUDA
+
 # Include our submodules
 # Base modules (no dependencies)
 include("CSVUtil.jl")
