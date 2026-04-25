@@ -142,6 +142,7 @@ function (@main)(args)
             test_config,
             graph,
             observables,
+            parsed_args["mkl-num-threads"],
         )
 
         # If we're not using NLCE,
