@@ -71,11 +71,12 @@ The main entry point! Handles the high-level control flow of the program.
 function (@main)(args)
     # Parse command line arguments
     parsed_args = parse_cli()
-    @info "Args: $parsed_args"
 
     # Install our own logger for the duration of the program
     old_logger =
         Logging.global_logger(DataHelpers.FlushingLogger(stdout, parsed_args["loglevel"]))
+
+    @info "Args: $parsed_args"
 
     # Parse configuration file
     config = TOML.parsefile("SimulationConfig.toml")
