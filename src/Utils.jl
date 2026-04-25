@@ -1,5 +1,8 @@
 module Utils
 
+import LinearAlgebra
+import MKL_jll
+
 """
     convert_strings_to_symbols(dict::Dict{String,Any}) -> Dict{Symbol,Any}
 
@@ -23,5 +26,13 @@ dict: The dictionary whose values should be transformed.
 map_dict_values(::Type{T}, f::Function, dict::Dict{K,V}) where {K,V,T} =
     Dict{K,T}((k, T(f(v))) for (k, v) in dict)
 map_dict_values(f::Function, dict::Dict{K,V}) where {K,V} = map_dict_values(Any, f, dict)
+
+"""
+    mkl_set_num_threads_local(num_threads::LinearAlgebra.BlasInt) -> Cint
+
+Set the number of threads for MKL to use in the current thread. I didn't see this mapped in MKL.jll, so I added it here to give us some extra control.
+See https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2025-0/mkl-set-num-threads-local.html for details.
+"""
+mkl_set_num_threads_local(num_threads::LinearAlgebra.BlasInt) = @ccall MKL_jll.libmkl_rt.mkl_set_num_threads_local(num_threads::Cint)::Cint
 
 end

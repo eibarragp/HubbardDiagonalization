@@ -302,6 +302,7 @@ function diagonalize_and_compute_observables(
     config::TestConfiguration,
     graph::Graph,
     observables::Dict{String,Observable},
+    mkl_num_threads::LinearAlgebra.BlasInt = Threads.nthreads()::LinearAlgebra.BlasInt,
 )
     # Load parameters into the local scope
     num_colors = config.num_colors
@@ -376,6 +377,10 @@ function diagonalize_and_compute_observables(
         L = block_sizes[config_idx]
         H = SymmetricMatrix(L)  # Use custom "SymmetricMatrix" type to save memory at the cost of speed
         observables_basis = create_observable_data_map([ObservableType_Direct], L)  # Compute the observables for each state as we build the matrix
+
+        # Set the number of threads for MKL in this thread. This lets us allocate a fixed number of threads to each block rather than
+        # causing one block to saturate the thread pool
+        Utils.mkl_set_num_threads_local(mkl_num_threads)
 
         # Compute Hamiltonian matrix elements between all pairs of states
         # enumerate_multistate returns elements in a consistent order, so

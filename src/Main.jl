@@ -27,6 +27,10 @@ function parse_cli()
         help = "Directory to save output files to"
         arg_type = String
         default = "output"
+        "--mkl-num-threads"
+        help = "Maximum number of threads to use for MKL operations per Julia thread."
+        arg_type = Int
+        default = 1
         "diagonalize"
         help = "Diagonalize and compute observables for the specified cluster"
         action = :command

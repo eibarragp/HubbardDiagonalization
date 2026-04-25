@@ -1,5 +1,9 @@
 module HubbardDiagonalization
 
+# Use MKL because it plays more nicely with Julia's multi-threading
+# This must be the first package loaded!
+using MKL
+
 # Include our submodules
 # Base modules (no dependencies)
 include("CSVUtil.jl")
