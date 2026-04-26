@@ -381,7 +381,7 @@ function diagonalize_and_compute_observables(
         # as long as we're consistent, the matrix elements will be in the right place
         # state_i and state_j are arrays of integers, where each integer is a bitmask
         # representing the occupation of each site for a given color
-        @threads :greedy for (i, state_i) in enumerate(enumerate_multistate(num_sites, color_configuration))
+        @threads :greedy for (i, state_i) in collect(enumerate(enumerate_multistate(num_sites, color_configuration)))
             # Note: We're going to cut this inner loop off early since the matrix is symmetric
             for (j, state_j) in
                 enumerate(enumerate_multistate(num_sites, color_configuration))
@@ -508,7 +508,7 @@ function diagonalize_and_compute_observables(
         # Compute and store observables for each eigen-state
         offset = size_offset[config_idx]
         @threads for (i, (eigen_val, eigen_vec)) in
-            enumerate(zip(eigen_data.values, eachcol(eigen_data.vectors)))
+            collect(enumerate(zip(eigen_data.values, eachcol(eigen_data.vectors))))
             @debug begin
                 "  eigen_val=$eigen_val, eigen_vec=$eigen_vec"
             end
