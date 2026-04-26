@@ -4,6 +4,7 @@ using HubbardDiagonalization:
 
 import CSV
 import JSON3 as JSON
+import LinearAlgebra
 import Logging
 import TOML
 
@@ -128,6 +129,11 @@ function (@main)(args)
         else
             @info "Running with $(nthreads()) threads."
         end
+
+        # Run BLAS in single-threaded mode
+        # BLAS's multi-threading doesn't play nicely with Julia's multi-threading
+        # so by default we'll handle it all ourselves.
+        LinearAlgebra.BLAS.set_num_threads(1)
 
         observables = ED.default_observables(test_config, graph)
         @info "Defined observables: $(keys(observables))"
