@@ -325,8 +325,10 @@ struct FlushingLogger <: Logging.AbstractLogger
     stream::IO
 end
 
-FlushingLogger(stream::IO, args...; kwargs...) = FlushingLogger(Logging.ConsoleLogger(stream, args...; kwargs...), stream)
-Logging.shouldlog(logger::FlushingLogger, args...) = Logging.shouldlog(logger.logger, args...)
+FlushingLogger(stream::IO, args...; kwargs...) =
+    FlushingLogger(Logging.ConsoleLogger(stream, args...; kwargs...), stream)
+Logging.shouldlog(logger::FlushingLogger, args...) =
+    Logging.shouldlog(logger.logger, args...)
 Logging.min_enabled_level(logger::FlushingLogger) = Logging.min_enabled_level(logger.logger)
 Logging.catch_exceptions(logger::FlushingLogger) = Logging.catch_exceptions(logger.logger)
 
