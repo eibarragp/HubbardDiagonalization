@@ -132,6 +132,8 @@ function Base.iterate(iter::StateIterator, last_value::Int)
     return new_state, new_state
 end
 
+Base.length(iter::StateIterator) = binomial(iter.n_bits_total, iter.n_bits_set)
+
 #endregion
 
 """
@@ -186,7 +188,8 @@ function Base.iterate(iter::MultiStateIterator, last_states::Vector{Int})
         if next_state !== nothing
             # If successful, continue
             last_states[i] = first(next_state)
-            return last_states, last_states  # See note about return value in iterate(iter) implementation
+            # Return a copy so that the caller doesn't accidentally modify our internal state
+            return copy(last_states), last_states  # See note about return value in iterate(iter) implementation
         else
             # Otherwise, we've iterated over all the states for this color
             # Reset this color and try iterating the next one
@@ -196,6 +199,8 @@ function Base.iterate(iter::MultiStateIterator, last_states::Vector{Int})
     # If all the colors are exhausted, we're done
     return nothing
 end
+
+Base.length(iter::MultiStateIterator) = prod(length(it) for it in iter.iterators)
 
 #endregion
 
