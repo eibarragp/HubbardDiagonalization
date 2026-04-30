@@ -52,11 +52,11 @@ function parse_cli()
     end
 
     @add_arg_table s["merge"] begin
-		"--validate"
-		help = "How to validate input data before processing. (Options: yes, no, scan_only)"
-		arg_type = String
-		default = "yes"
-		range_tester = x -> lowercase(x) in ("yes", "no", "scan_only")
+        "--validate"
+        help = "How to validate input data before processing. (Options: yes, no, scan_only)"
+        arg_type = String
+        default = "yes"
+        range_tester = x -> lowercase(x) in ("yes", "no", "scan_only")
         "clusterfile"
         help = "Path to the cluster info file."
         arg_type = String
@@ -177,12 +177,7 @@ function (@main)(args)
 
     # Whichever command was run, it should've stored its result in `observable_data`
     # Export the data based on the provided parameters
-    DataHelpers.export_observable_data(
-        t_vals,
-        u_vals,
-        observable_data,
-        test_config,
-    )
+    DataHelpers.export_observable_data(t_vals, u_vals, observable_data, test_config)
 
     if parsed_args["diagonalize"]["generate-plots"] || parsed_args["%COMMAND%"] == "simple"
         DataHelpers.plot_observable_data(

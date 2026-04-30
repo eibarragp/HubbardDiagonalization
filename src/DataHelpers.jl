@@ -46,12 +46,17 @@ function export_observable_data(
     end
     # Save the parameters to a TOML file for easy loading later
     open("$(output_dir)/RunInfo.toml", "w") do run_info_file
-        TOML.print(run_info_file, Dict("parameters" => Dict(
-            "t" => config.t,
-            "U" => config.U,
-            "num_sites" => num_sites_str,
-            "num_colors" => config.num_colors,
-        )))
+        TOML.print(
+            run_info_file,
+            Dict(
+                "parameters" => Dict(
+                    "t" => config.t,
+                    "U" => config.U,
+                    "num_sites" => num_sites_str,
+                    "num_colors" => config.num_colors,
+                ),
+            ),
+        )
     end
 end
 
