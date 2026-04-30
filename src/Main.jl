@@ -28,6 +28,9 @@ function parse_cli()
         help = "Directory to save output files to"
         arg_type = String
         default = "output"
+        "--generate-plots"
+        help = "Generate plots for the diagonalized cluster(s). Assumed 'true' when 'simple' is specified."
+        action = :store_true
         "diagonalize"
         help = "Diagonalize and compute observables for the specified cluster"
         action = :command
@@ -40,9 +43,6 @@ function parse_cli()
     end
 
     @add_arg_table s["diagonalize"] begin
-        "--generate-plots"
-        help = "By default, plot generation is skipped for cluster runs. Use this flag to reenable it."
-        action = :store_true
         "clusterfile"
         help = "Path to the cluster info file."
         arg_type = String
@@ -110,12 +110,6 @@ function (@main)(args)
 
         cluster = DataHelpers.sorted_clusters(cluster_data)[cluster_idx]
         graph = Graphs.from_cluster(cluster)
-
-        # Unless told otherwise, don't generate plots
-        if !parsed_args["diagonalize"]["generate-plots"]
-            plot_config["T_fixed_plots"] = []
-            plot_config["u_fixed_plots"] = []
-        end
     elseif parsed_args["%COMMAND%"] == "simple"
         # For simple runs, we just generate a linear chain graph with the specified number of sites.
         graph = Graphs.linear_chain(graph_config["num_sites"])
@@ -175,15 +169,24 @@ function (@main)(args)
     # Whichever command was run, it should've stored its result in `observable_data`
     # Export the data based on the provided parameters
     DataHelpers.export_observable_data(
-        plot_config,
         t_vals,
         u_vals,
         observable_data,
         test_config,
-        @isdefined(graph) ? string(Graphs.num_sites(graph)) : "NLCE",
-        parsed_args["%COMMAND%"] == "merge",
-        parsed_args["outputdir"],
     )
+
+    if parsed_args["diagonalize"]["generate-plots"] || parsed_args["%COMMAND%"] == "simple"
+        DataHelpers.plot_observable_data(
+            plot_config,
+            t_vals,
+            u_vals,
+            observable_data,
+            test_config,
+            @isdefined(graph) ? string(Graphs.num_sites(graph)) : "NLCE",
+            parsed_args["%COMMAND%"] == "merge",
+            parsed_args["outputdir"],
+        )
+    end
 
     @info "Done."
 

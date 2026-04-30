@@ -17,34 +17,24 @@ end
 
 """
     export_observable_data(
-        plot_config::Dict{String,Any},
         T_vals::AbstractVector{Float64},
         u_vals::AbstractVector{Float64},
         observable_data::Dict{String,Matrix{Float64}},
-        config::ED.TestConfiguration,
-        num_sites_str::String,
-        using_nlce::Bool,
-        output_dir::String,
+        config::ED.TestConfiguration
     )
 
-Exports the computed observable data to CSV files and generates plots based on the provided plot configuration.
+Exports the computed observable data to CSV files.
 """
 function export_observable_data(
-    plot_config::Dict{String,Any},
     T_vals::AbstractVector{Float64},
     u_vals::AbstractVector{Float64},
     observable_data::Dict{String,Matrix{Float64}},
     config::ED.TestConfiguration,
     num_sites_str::String,
-    using_nlce::Bool,
     output_dir::String,
 )
     @info "Exporting observable data..."
 
-    plot_width = plot_config["width"]
-    plot_height = plot_config["height"]
-
-    Base.Filesystem.mkpath(output_dir)
     # Save each observable to a CSV file
     for (observable_name, data_matrix) in observable_data
         labeled_matrix = hcat(["u/T", T_vals...], vcat(u_vals', data_matrix))
@@ -63,6 +53,34 @@ function export_observable_data(
             "num_colors" => config.num_colors,
         )))
     end
+end
+
+"""
+    export_observable_data(
+        plot_config::Dict{String,Any},
+        T_vals::AbstractVector{Float64},
+        u_vals::AbstractVector{Float64},
+        observable_data::Dict{String,Matrix{Float64}},
+        config::ED.TestConfiguration,
+        num_sites_str::String,
+        using_nlce::Bool,
+        output_dir::String,
+    )
+
+Generates plots for the computed observables based on the provided plot configuration.
+"""
+function plot_observable_data(
+    plot_config::Dict{String,Any},
+    T_vals::AbstractVector{Float64},
+    u_vals::AbstractVector{Float64},
+    observable_data::Dict{String,Matrix{Float64}},
+    config::ED.TestConfiguration,
+    num_sites_str::String,
+    using_nlce::Bool,
+    output_dir::String,
+)
+    plot_width = plot_config["width"]
+    plot_height = plot_config["height"]
 
     # Load csv (if requested)
     if haskey(plot_config, "overlay_data") &&
