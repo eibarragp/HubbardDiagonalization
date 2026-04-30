@@ -52,6 +52,11 @@ function parse_cli()
     end
 
     @add_arg_table s["merge"] begin
+		"--validate"
+		help = "How to validate input data before processing. (Options: yes, no, scan_only)"
+		arg_type = String
+		default = "yes"
+		range_tester = x -> lowercase(x) in ("yes", "no", "scan_only")
         "clusterfile"
         help = "Path to the cluster info file."
         arg_type = String
@@ -61,7 +66,10 @@ function parse_cli()
         nargs = '+'
     end
 
-    return parse_args(s)
+    parsed_args = parse_args(s)
+    parsed_args["validate"] = lowercase(parsed_args["validate"])
+
+    return parsed_args
 end
 
 """
@@ -159,6 +167,7 @@ function (@main)(args)
             data_dirs,
             observable_names,
             plot_config["nlce_orders"],
+            parsed_args["merge"]["validate"],
         )
     else
         error(

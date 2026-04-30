@@ -1,5 +1,5 @@
 using HubbardDiagonalization:
-	CSVUtil, ExactDiagonalization as ED
+	CSVUtil, DataHelpers, ExactDiagonalization as ED
 
 import TOML
 
@@ -57,7 +57,7 @@ function (@main)(args)
 		U = [0]
 	else
 		@info "Performing initial validation of input data..."
-		test_config, U = validate_datasets(cli_args["datadirs"], cli_args["validate"] == "scan_only")
+		test_config, U = DataHelpers.validate_datasets(cli_args["datadirs"], cli_args["validate"] == "scan_only")
 		@info "Validation complete."
 	end
 
@@ -147,36 +147,6 @@ function (@main)(args)
 			end
 		end
 	end
-end
-
-function load_config_from_output_dir(datadir::String)
-    config_path = joinpath(datadir, "RunInfo.toml")
-    if !isfile(config_path)
-        error("RunInfo.toml not found in $datadir")
-    end
-    params = TOML.parsefile(config_path).get("parameters", nothing)
-    if params === nothing
-        error("No [parameters] section found in RunInfo.toml at $config_path")
-    end
-    config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params))
-    config.u_test = 0  # We don't care about u_test
-    return config
-end
-
-function validate_datasets(datadirs::Vector{String}, scan_only::Bool)
-    test_config = load_config_from_output_dir(datadirs[1])
-    Us = [test_config.U]
-
-    for datadir in @view datadirs[2:end]
-        config = load_config_from_output_dir(datadir)
-        push!(Us, config.U)
-
-        if !scan_only && config != test_config
-            error("Test configuration mismatch between $datadir and $(datadirs[1]).")
-        end
-    end
-
-    return test_config, Us
 end
 
 function validate_config(config::Dict{String, Any}, Us::Vector{Float64})

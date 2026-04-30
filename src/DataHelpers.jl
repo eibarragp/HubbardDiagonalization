@@ -64,6 +64,7 @@ data_dirs: A vector of paths to the directories containing the computed data for
             The order of the directories should match the order returned by sorted_clusters(cluster_data).
 observables: A vector of the names of the observables to merge
 nlce_orders: A vector of the NLCE orders to compute (e.g. [1, 2, 3] to compute up to 3rd order)
+validate_mode: A string indicating how to validate the input data before processing. (See validate_datasets())
 
 Returns a dictionary mapping observable names (with NLCE order appended) to their merged data matrices.
 """
@@ -72,7 +73,16 @@ function merge_results_with_nlce(
     data_dirs::Vector{String},
     observables::Vector{String},
     nlce_orders::Vector{Int},
+    validate_mode::String,
 )
+    if validate != "no"
+        @info "Validating input data..."
+        validate_datasets(data_dirs, validate_mode == "scan_only")  # TODO: Perform additional checks!
+        @info "Validation complete."
+    else
+        @warn "Skipping validation of input data, per user request."
+    end
+
     # Extract the coefficients
     cluster_data = JSON.read(read(cluster_file, String))
 
@@ -155,6 +165,35 @@ function sorted_clusters(cluster_data::AbstractDict)
 end
 
 
+function load_config_from_output_dir(datadir::String)
+    config_path = joinpath(datadir, "RunInfo.toml")
+    if !isfile(config_path)
+        error("RunInfo.toml not found in $datadir")
+    end
+    params = TOML.parsefile(config_path).get("parameters", nothing)
+    if params === nothing
+        error("No [parameters] section found in RunInfo.toml at $config_path")
+    end
+    config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params))
+    config.u_test = 0  # We don't care about u_test
+    return config
+end
+
+function validate_datasets(datadirs::Vector{String}, scan_only::Bool)
+    test_config = load_config_from_output_dir(datadirs[1])
+    Us = [test_config.U]
+
+    for datadir in @view datadirs[2:end]
+        config = load_config_from_output_dir(datadir)
+        push!(Us, config.U)
+
+        if !scan_only && config != test_config
+            error("Test configuration mismatch between $datadir and $(datadirs[1]).")
+        end
+    end
+
+    return test_config, Us
+end
 
 """
     export_observable_data(
