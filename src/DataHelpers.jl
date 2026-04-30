@@ -56,6 +56,107 @@ function export_observable_data(
 end
 
 """
+    merge_results_with_nlce(cluster_file::String, data_dirs::Vector{String}, observables::Vector{String}, nlce_orders::Vector{Int}) -> Dict{String,Matrix{Float64}}
+
+Merges the results from different clusters using NLCE
+cluster_file: The path to the cluster file containing the cluster definitions and their coefficients
+data_dirs: A vector of paths to the directories containing the computed data for each cluster.
+            The order of the directories should match the order returned by sorted_clusters(cluster_data).
+observables: A vector of the names of the observables to merge
+nlce_orders: A vector of the NLCE orders to compute (e.g. [1, 2, 3] to compute up to 3rd order)
+
+Returns a dictionary mapping observable names (with NLCE order appended) to their merged data matrices.
+"""
+function merge_results_with_nlce(
+    cluster_file::String,
+    data_dirs::Vector{String},
+    observables::Vector{String},
+    nlce_orders::Vector{Int},
+)
+    # Extract the coefficients
+    cluster_data = JSON.read(read(cluster_file, String))
+
+    coefficients = []
+    for cluster in sorted_clusters(cluster_data)
+        push!(coefficients, cluster[3])
+    end
+
+    # The actual coefficient for each order is the sum of all coefficients up-to that order
+    # This will create a matrix of the form [NLCE Order, Cluster Index]
+    coefficients = hcat(cumsum.(coefficients)...)
+
+    if length(data_dirs) > size(coefficients, 2)
+        error(
+            "More clusters provided ($(length(data_dirs))) than clusters in the cluster file ($(size(coefficients, 2)))!",
+        )
+    end
+
+    @info "Coefficients loaded for $(length(data_dirs)) clusters"
+    @debug "Coefficients: $coefficients"
+
+    # Load the data for each cluster and store it in a dictionary of the form Dict{ObservableName => [ClusterIndex => DataMatrix]}
+    cluster_observable_data = Dict{String,Vector{Matrix{Float64}}}()
+    for observable in observables
+        cluster_data = Vector{Matrix{Float64}}()
+        for data_dir in data_dirs
+            data_path = "$(data_dir)/$(observable).csv"
+            data_matrix = CSVUtil.load_csv_matrix(data_path)[2:end, 2:end]  # Skip the first row and column, which contain the u and T values (we'll assume these are the same as in SimulationConfig.toml)
+            push!(cluster_data, data_matrix)
+        end
+
+        cluster_observable_data[observable] = cluster_data
+    end
+
+    # Compute the NLCE results!
+    observable_data = Dict{String,Matrix{Float64}}()
+    for order in nlce_orders
+        order_coefficients = coefficients[order, :]
+        @info "Computing NLCE results for order $order..."
+        for observable in observables
+            data_matrices = cluster_observable_data[observable]
+
+            # Compute the NLCE result for this observable and order by summing over the contributions from each cluster weighted by their coefficients
+            nlce_result = zeros(size(data_matrices[1]))
+            for (cluster_idx, cluster_data) in enumerate(data_matrices)
+                nlce_result .+= order_coefficients[cluster_idx] .* cluster_data
+            end
+
+            observable_data["$(observable)_NLCE_Order_$order"] = nlce_result
+        end
+    end
+
+    return observable_data
+end
+
+"""
+    sorted_clusters(cluster_data::AbstractDict) -> Vector{Tuple}
+
+Sorts the clusters from the cluster data dictionary first by order and then by id (both cases ascending)
+Returns a vector of tuples of whatever form is in the cluster file, but with the id appended as an Int128
+"""
+function sorted_clusters(cluster_data::AbstractDict)
+    clusters = []
+
+    # Load the clusters into a vector
+    for (id, cluster) in cluster_data
+        # Append the id so that we can sort by it to ensure a consistent order
+        push!(clusters, (cluster..., parse(Int128, String(id))))  # The id is too large to be stored as an Int
+    end
+
+    # Sort and return the result
+    return sort(clusters; lt = (a, b) -> begin
+        # Sort primarily by size
+        if length(a[1]) != length(b[1])
+            return length(a[1]) < length(b[1])
+        end
+        # Then sort by id
+        return a[4] < b[4]
+    end)
+end
+
+
+
+"""
     export_observable_data(
         plot_config::Dict{String,Any},
         T_vals::AbstractVector{Float64},
@@ -244,105 +345,6 @@ function plot_observable_data(
     end
 
     return
-end
-
-"""
-    merge_results_with_nlce(cluster_file::String, data_dirs::Vector{String}, observables::Vector{String}, nlce_orders::Vector{Int}) -> Dict{String,Matrix{Float64}}
-
-Merges the results from different clusters using NLCE
-cluster_file: The path to the cluster file containing the cluster definitions and their coefficients
-data_dirs: A vector of paths to the directories containing the computed data for each cluster.
-            The order of the directories should match the order returned by sorted_clusters(cluster_data).
-observables: A vector of the names of the observables to merge
-nlce_orders: A vector of the NLCE orders to compute (e.g. [1, 2, 3] to compute up to 3rd order)
-
-Returns a dictionary mapping observable names (with NLCE order appended) to their merged data matrices.
-"""
-function merge_results_with_nlce(
-    cluster_file::String,
-    data_dirs::Vector{String},
-    observables::Vector{String},
-    nlce_orders::Vector{Int},
-)
-    # Extract the coefficients
-    cluster_data = JSON.read(read(cluster_file, String))
-
-    coefficients = []
-    for cluster in sorted_clusters(cluster_data)
-        push!(coefficients, cluster[3])
-    end
-
-    # The actual coefficient for each order is the sum of all coefficients up-to that order
-    # This will create a matrix of the form [NLCE Order, Cluster Index]
-    coefficients = hcat(cumsum.(coefficients)...)
-
-    if length(data_dirs) > size(coefficients, 2)
-        error(
-            "More clusters provided ($(length(data_dirs))) than clusters in the cluster file ($(size(coefficients, 2)))!",
-        )
-    end
-
-    @info "Coefficients loaded for $(length(data_dirs)) clusters"
-    @debug "Coefficients: $coefficients"
-
-    # Load the data for each cluster and store it in a dictionary of the form Dict{ObservableName => [ClusterIndex => DataMatrix]}
-    cluster_observable_data = Dict{String,Vector{Matrix{Float64}}}()
-    for observable in observables
-        cluster_data = Vector{Matrix{Float64}}()
-        for data_dir in data_dirs
-            data_path = "$(data_dir)/$(observable).csv"
-            data_matrix = CSVUtil.load_csv_matrix(data_path)[2:end, 2:end]  # Skip the first row and column, which contain the u and T values (we'll assume these are the same as in SimulationConfig.toml)
-            push!(cluster_data, data_matrix)
-        end
-
-        cluster_observable_data[observable] = cluster_data
-    end
-
-    # Compute the NLCE results!
-    observable_data = Dict{String,Matrix{Float64}}()
-    for order in nlce_orders
-        order_coefficients = coefficients[order, :]
-        @info "Computing NLCE results for order $order..."
-        for observable in observables
-            data_matrices = cluster_observable_data[observable]
-
-            # Compute the NLCE result for this observable and order by summing over the contributions from each cluster weighted by their coefficients
-            nlce_result = zeros(size(data_matrices[1]))
-            for (cluster_idx, cluster_data) in enumerate(data_matrices)
-                nlce_result .+= order_coefficients[cluster_idx] .* cluster_data
-            end
-
-            observable_data["$(observable)_NLCE_Order_$order"] = nlce_result
-        end
-    end
-
-    return observable_data
-end
-
-"""
-    sorted_clusters(cluster_data::AbstractDict) -> Vector{Tuple}
-
-Sorts the clusters from the cluster data dictionary first by order and then by id (both cases ascending)
-Returns a vector of tuples of whatever form is in the cluster file, but with the id appended as an Int128
-"""
-function sorted_clusters(cluster_data::AbstractDict)
-    clusters = []
-
-    # Load the clusters into a vector
-    for (id, cluster) in cluster_data
-        # Append the id so that we can sort by it to ensure a consistent order
-        push!(clusters, (cluster..., parse(Int128, String(id))))  # The id is too large to be stored as an Int
-    end
-
-    # Sort and return the result
-    return sort(clusters; lt = (a, b) -> begin
-        # Sort primarily by size
-        if length(a[1]) != length(b[1])
-            return length(a[1]) < length(b[1])
-        end
-        # Then sort by id
-        return a[4] < b[4]
-    end)
 end
 
 # We need to flush the output stream in order to ensure that logs are written in a timely manner
