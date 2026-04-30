@@ -150,13 +150,13 @@ function (@main)(args)
 end
 
 function load_config_from_output_dir(datadir::String)
-    config_path = joinpath(datadir, "SimulationConfig.toml")
+    config_path = joinpath(datadir, "RunInfo.toml")
     if !isfile(config_path)
-        error("SimulationConfig.toml not found in $datadir")
+        error("RunInfo.toml not found in $datadir")
     end
     params = TOML.parsefile(config_path).get("parameters", nothing)
     if params === nothing
-        error("No [parameters] section found in SimulationConfig.toml at $config_path")
+        error("No [parameters] section found in RunInfo.toml at $config_path")
     end
     config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params))
     config.u_test = 0  # We don't care about u_test

@@ -45,6 +45,7 @@ function export_observable_data(
     plot_height = plot_config["height"]
 
     Base.Filesystem.mkpath(output_dir)
+    # Save each observable to a CSV file
     for (observable_name, data_matrix) in observable_data
         labeled_matrix = hcat(["u/T", T_vals...], vcat(u_vals', data_matrix))
         CSV.write(
@@ -52,6 +53,15 @@ function export_observable_data(
             CSV.Tables.table(labeled_matrix),
             writeheader = false,
         )
+    end
+    # Save the parameters to a TOML file for easy loading later
+    open("$(output_dir)/RunInfo.toml", "w") do run_info_file
+        TOML.print(run_info_file, Dict("parameters" => Dict(
+            "t" => config.t,
+            "U" => config.U,
+            "num_sites" => num_sites_str,
+            "num_colors" => config.num_colors,
+        )))
     end
 
     # Load csv (if requested)
