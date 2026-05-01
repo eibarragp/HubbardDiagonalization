@@ -15,7 +15,7 @@ end
 
 format_string(s::String, args::Dict{String,Any}) = replace(
     s,
-    Regex("%($(keys(args) |> join("|"))|%)") =>
+    Regex("%($(join(keys(args), "|"))|%)") =>
         m -> begin
             key = m[2:end]
             if key == "%"

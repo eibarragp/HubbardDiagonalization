@@ -32,7 +32,6 @@ function parse_cli()
         "plot_config"
         help = "Path to a TOML file containing plotting configuration options."
         arg_type = String
-        default = "PlotConfig.toml"
         "datadirs"
         help = "Directories containing the output data to merge."
         arg_type = String
@@ -60,10 +59,10 @@ function (@main)(args)
         @warn "Skipping validation of input data."
 
         test_config = ED.TestConfiguration(num_colors = 0, t = 1, u_test = 0, U = 0)
-        U = [0]
+        Us = [0.0]
     else
         @info "Performing initial validation of input data..."
-        test_config, U = DataHelpers.validate_datasets(
+        test_config, Us = DataHelpers.validate_datasets(
             cli_args["datadirs"],
             cli_args["validate"] == "scan_only",
         )
@@ -72,10 +71,13 @@ function (@main)(args)
 
     config = TOML.parsefile(cli_args["plot_config"])
 
-    validate_config(config, U)
+    validate_config(config, Us)
+
+    output_dir = cli_args["outputdir"]
+    Base.Filesystem.mkpath(output_dir)
 
     for (fig_name, fig_config) in config
-        @info "Generating plot for $fig_name..."
+        @info "Generating plots for $fig_name..."
         observable_ids = fig_config["observables"]["ids"]
         observable_names = fig_config["observables"]["names"]
 
@@ -83,7 +85,7 @@ function (@main)(args)
             observable_name = observable_names[observable_id]
 
             for axis in variables
-                axis_range = get!(fig_config, "$(axis)_range", [])
+                axis_range = get!(fig_config, "$(axis)_range", []) .|> Float64
                 if isempty(axis_range)
                     continue
                 end
@@ -103,7 +105,7 @@ function (@main)(args)
                         (false, var, load_range(fig_config["fixed_$(var)"]))
                     end
 
-                fixed_var = setdiff(variables, [axis, var])[1]
+                fixed_var = setdiff(variables, [axis, var]) |> only
                 fixed_value_range = load_range(fig_config["fixed_$(fixed_var)"])
 
 				is_logarithmic = is_log(axis_range)
@@ -142,7 +144,7 @@ function (@main)(args)
 							)
                         end
 
-                        for prefix_name in keys(prefixes)
+                        for prefix_name in keys(fig_config["prefixes"])
                             create_plots_for_resummation_method!(
                                 figure,
                                 fig_config,
@@ -151,6 +153,7 @@ function (@main)(args)
                                 Us,
                                 observable_id,
                                 prefix_name,
+                                fig_config["prefixes"][prefix_name]["orders"],
                                 axis,
                                 axis_range,
                                 fixed_var,
@@ -162,12 +165,12 @@ function (@main)(args)
                         end
 
                         if !is_overlay
-                            savefig(figure, filename)
+                            savefig(figure, joinpath(output_dir, filename))
                         end
                     end
 
                     if is_overlay
-                        savefig(figure, filename)
+                        savefig(figure, joinpath(output_dir, filename))
                     end
                 end
             end
@@ -194,10 +197,9 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
 
         get!(fig_config["observables"], "names", Dict())
         for observable_id in fig_config["observables"]["ids"]
-            get!(observable_names, observable_id, observable_id)
+            get!(fig_config["observables"]["names"], observable_id, observable_id)
         end
 
-        get!(fig_config, "U_range", Us)
         get!(fig_config, "fixed_U", Us)
 
         get!(fig_config, "atol", 1e-3)
@@ -207,7 +209,7 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
             error("Figure $fig_name is missing required 'prefixes' field.")
         end
 
-        for (prefix_name, prefix_data) in prefixes
+        for (prefix_name, prefix_data) in fig_config["prefixes"]
             if !haskey(prefix_data, "orders")
                 error(
                     "Figure $fig_name is missing required 'orders' field in prefix $prefix_name.",
@@ -293,7 +295,8 @@ function load_data_matrix(file::String)
 
     return DataMatrix(
         data_matrix[1, 2:end],
-        data_matrix[2:end, 1],
+        # For some reason, this row only is parsed as strings rather than floats, so we have to manually convert it.
+        parse.(Float64, data_matrix[2:end, 1]),
         data_matrix[2:end, 2:end],
     )
 end
@@ -311,12 +314,19 @@ function load_data_matrix(
         error("No data found for U = $U")
     end
     return load_data_matrix(
-        joinpath(datadirs[dir_idx], "$(observable_id)_$(prefix)_$(order).csv"),
+        joinpath(datadirs[dir_idx], "$(observable_id)_$(prefix)_Order_$(order).csv"),
     )
 end
 
-load_range(range) = Float64(range[1]):Float64(range[2]):Float64(range[3])
-is_log(range) = length(range) == 4 && range[4] == "log"
+function load_range(range)
+    if range[1] == "range"
+        return Float64(range[2]):Float64(range[3]):Float64(range[4])
+    else
+        return Float64.(range)
+    end
+end
+
+is_log(range) = length(range) == 3 && range[3] == "log"
 
 function get_data_for_params(
     datadirs::Vector{String},
@@ -324,7 +334,7 @@ function get_data_for_params(
     observable_id::String,
     prefix::String,
     order::Int,
-    :U;
+    ::Val{:U};
     T::Float64,
     u::Float64,
     U::Vector{Float64},
@@ -356,7 +366,7 @@ function get_data_for_params(
     observable_id::String,
     prefix::String,
     order::Int,
-    :T;
+    ::Val{:T};
     T::Vector{Float64},
     u::Float64,
     U::Float64,
@@ -381,7 +391,7 @@ function get_data_for_params(
     observable_id::String,
     prefix::String,
     order::Int,
-    :u;
+    ::Val{:u};
     T::Float64,
     u::Vector{Float64},
     U::Float64,
@@ -408,6 +418,7 @@ function create_plots_for_resummation_method!(
     Us::Vector{Float64},
     observable_id::String,
     prefix::String,
+    orders::Vector{Int},
     axis::String,
     axis_range::Vector{Float64},
     fixed_var::String,
@@ -432,7 +443,7 @@ function create_plots_for_resummation_method!(
                 observable_id,
                 prefix,
                 order,
-                Symbol(axis);
+                Val(Symbol(axis));
                 Symbol(axis) => axis_range,
                 Symbol(fixed_var) => fixed_value,
                 Symbol(secondary_var) => secondary_value,
@@ -457,10 +468,16 @@ function create_plots_for_resummation_method!(
             # 4) Give up and don't use a cutoff
             cmp_order = order + 1
             if !haskey(datasets, cmp_order)
-                cmp_order = findmax(filter(<(order), keys(datasets)))
+                larger_orders = filter(>(order), keys(datasets))
+                if !isempty(larger_orders)
+                    cmp_order = minimum(larger_orders)
+                end
             end
             if !haskey(datasets, cmp_order)
-                cmp_order = findmin(filter(>(order), keys(datasets)))
+                smaller_orders = filter(<(order), keys(datasets))
+                if !isempty(smaller_orders)
+                    cmp_order = maximum(smaller_orders)
+                end
             end
             if !haskey(datasets, cmp_order)
                 cutoff_idxs[order] = 1
@@ -475,7 +492,7 @@ function create_plots_for_resummation_method!(
 
             # All orders (with the same params) should be generated from the same temperatures,
             # so the relevant indicies should be identical.
-            cutoff = findlast(zip(values, cmp_values)) do (value, cmp_value)
+            cutoff = findlast(collect(zip(values, cmp_values))) do (value, cmp_value)
                 # Find the last non-converged point to avoid cases where the data
                 # looks converged but re-diverges
                 # Don't bother with adding 1 to get to the first converged point because
@@ -491,7 +508,7 @@ function create_plots_for_resummation_method!(
 
             if cutoff === nothing
                 @warn "$observable_id with $prefix order $order failed to converge!"
-                cutoff_idxs[order] = minimum(temps)
+                cutoff_idxs[order] = 1
             else
                 cutoff_idxs[order] = cutoff
             end
@@ -500,14 +517,16 @@ function create_plots_for_resummation_method!(
         cutoff_idxs = Dict(order => 1 for order in orders)
     end
 
+    @info cutoff_idxs
+
     for order in orders
         x_vals, values = datasets[order]
-        cutoff = cutoffs[order]
+        cutoff_idx = cutoff_idxs[order]
         overlay_var_label = is_overlay ? "$secondary_var = $secondary_value, " : ""
         plot!(
             figure,
-            x_vals[cutoff:end] / test_config.t,
-            values[cutoff:end],
+            x_vals[cutoff_idx:end] / test_config.t,
+            values[cutoff_idx:end],
             label = "$(overlay_var_label)$prefix Order $order",
         )
     end
