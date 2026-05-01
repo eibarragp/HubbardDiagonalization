@@ -125,6 +125,8 @@ if args.test is not None:
 
 #endregion
 
+#region Batch Creation
+
 # Load resource allocation info
 with open(args.resourcefile, 'r') as f:
 	resource_data = json.load(f)
@@ -151,6 +153,10 @@ for order, in batches_for_order.keys():
 	if order > 1 and order - 1 not in batches_for_order:
 		print(f"Error: Resource file specifies a discontinuous range of orders!")
 		exit(1)
+
+#endregion
+
+#region SLURM Script Generation
 
 merged_cpus = 0
 merged_memory = 0
@@ -224,6 +230,10 @@ merge_job_params = {
 
 generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}_merge.slurm', merge_job_params)
 
+#endregion
+
+#region Job Run Script Generation
+
 job_run_script = ['#!/bin/bash\n\n']
 
 for batch_num in range(batch_idx):
@@ -247,3 +257,5 @@ with open(f'{NLCE_HOME}/slurm/{job_name}.sh', 'w') as f:
 	f.writelines(job_run_script)
 
 os.chmod(f'{NLCE_HOME}/slurm/{job_name}.sh', 0o755)
+
+#endregion
