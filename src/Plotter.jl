@@ -7,9 +7,9 @@ using Plots
 
 const variables = Set{String}(["u", "U", "T"])
 const variable_names = Dict(
-	"u" => "Chemical Potential (μ)",
-	"U" => "Interaction Strength (U)",
-	"T" => "Temperature (T)",
+    "u" => "Chemical Potential (μ)",
+    "U" => "Interaction Strength (U)",
+    "T" => "Temperature (T)",
 )
 
 function parse_cli()
@@ -108,40 +108,40 @@ function (@main)(args)
                 fixed_var = setdiff(variables, [axis, var]) |> only
                 fixed_value_range = load_range(fig_config["fixed_$(fixed_var)"])
 
-				is_logarithmic = is_log(axis_range)
+                is_logarithmic = is_log(axis_range)
 
                 for v1 in fixed_value_range
                     if is_overlay
                         figure, filename = init_figure(
-							fig_config,
-							test_config,
-							observable_id,
-							observable_name,
-							is_logarithmic,
-							axis,
-							axis_range,
-							fixed_var,
-							v1,
-							secondary_var,
-							nothing,
-						)
+                            fig_config,
+                            test_config,
+                            observable_id,
+                            observable_name,
+                            is_logarithmic,
+                            axis,
+                            axis_range,
+                            fixed_var,
+                            v1,
+                            secondary_var,
+                            nothing,
+                        )
                     end
 
                     for v2 in secondary_range
                         if !is_overlay
                             figure, filename = init_figure(
-								fig_config,
-								test_config,
-								observable_id,
-								observable_name,
-								is_logarithmic,
-								axis,
-								axis_range,
-								fixed_var,
-								v1,
-								secondary_var,
-								v2,
-							)
+                                fig_config,
+                                test_config,
+                                observable_id,
+                                observable_name,
+                                is_logarithmic,
+                                axis,
+                                axis_range,
+                                fixed_var,
+                                v1,
+                                secondary_var,
+                                v2,
+                            )
                         end
 
                         for prefix_name in keys(fig_config["prefixes"])
@@ -220,11 +220,11 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
 end
 
 function format_name(
-	name::String,
-	test_config::ED.TestConfiguration,
-	observable_id::String,
-	observable_name::String,
-	is_logarithmic::Bool,
+    name::String,
+    test_config::ED.TestConfiguration,
+    observable_id::String,
+    observable_name::String,
+    is_logarithmic::Bool,
     axis::String,
     axis_range::Vector{Float64},
     fixed_var::String,
@@ -232,33 +232,33 @@ function format_name(
     secondary_var::String,
     secondary_value::Union{Float64,Nothing},
 )
-	available_variables = Dict(
-		"oi" => observable_id,
-		"on" => observable_name,
-		"xn" => axis,
-		"log" => is_logarithmic ? "logarithmic" : "linear",
-		"xmin" => axis_range[1],
-		"xmax" => axis_range[2],
-		"f1n" => fixed_var,
-		"f1v" => fixed_value,
-		"f2n" => secondary_var,
-		"f2v" => secondary_value,
-		"t" => test_config.t,
-		"ut" => test_config.u_test,
-		"nc" => test_config.num_colors,
-		axis => axis_range,
-		fixed_var => fixed_value,
-		secondary_var => secondary_value,
-	)
-	return Utils.format_string(name, available_variables)
+    available_variables = Dict(
+        "oi" => observable_id,
+        "on" => observable_name,
+        "xn" => axis,
+        "log" => is_logarithmic ? "logarithmic" : "linear",
+        "xmin" => axis_range[1],
+        "xmax" => axis_range[2],
+        "f1n" => fixed_var,
+        "f1v" => fixed_value,
+        "f2n" => secondary_var,
+        "f2v" => secondary_value,
+        "t" => test_config.t,
+        "ut" => test_config.u_test,
+        "nc" => test_config.num_colors,
+        axis => axis_range,
+        fixed_var => fixed_value,
+        secondary_var => secondary_value,
+    )
+    return Utils.format_string(name, available_variables)
 end
 
 function init_figure(
-	fig_config::Dict{String,Any},
-	test_config::ED.TestConfiguration,
-	observable_id::String,
-	observable_name::String,
-	is_logarithmic::Bool,
+    fig_config::Dict{String,Any},
+    test_config::ED.TestConfiguration,
+    observable_id::String,
+    observable_name::String,
+    is_logarithmic::Bool,
     axis::String,
     axis_range::Vector{Float64},
     fixed_var::String,
@@ -266,28 +266,28 @@ function init_figure(
     secondary_var::String,
     secondary_value::Union{Float64,Nothing},
 )
-	format(name) = format_name(
-			name,
-			test_config,
-			observable_id,
-			observable_name,
-			is_logarithmic,
-			axis,
-			axis_range,
-			fixed_var,
-			fixed_value,
-			secondary_var,
-			secondary_value,
-		)
+    format(name) = format_name(
+        name,
+        test_config,
+        observable_id,
+        observable_name,
+        is_logarithmic,
+        axis,
+        axis_range,
+        fixed_var,
+        fixed_value,
+        secondary_var,
+        secondary_value,
+    )
 
-	fig = plot(
-		xlabel = variable_names[axis] * "/t",
-		ylabel = observable_name,
-		title = format(fig_config["title"]),
-		legend_position = true,
-		xscale = is_logarithmic ? :log10 : :identity,
-	)
-	return fig, format(fig_config["filename"])
+    fig = plot(
+        xlabel = variable_names[axis] * "/t",
+        ylabel = observable_name,
+        title = format(fig_config["title"]),
+        legend_position = true,
+        xscale = is_logarithmic ? :log10 : :identity,
+    )
+    return fig, format(fig_config["filename"])
 end
 
 function load_data_matrix(file::String)
