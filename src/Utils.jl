@@ -13,6 +13,21 @@ function convert_strings_to_symbols(dict::Dict{String,Any})
     return new_dict
 end
 
+format_string(s::String, args::Dict{String,Any}) = replace(
+    s,
+    Regex("%($(keys(args) |> join("|"))|%)") =>
+        m -> begin
+            key = m[2:end]
+            if key == "%"
+                return "%"
+            elseif haskey(args, key)
+                return string(args[key])
+            else
+                error("Matched invalid escape sequence: $m. This should not be possible!")
+            end
+        end,
+)
+
 """
     map_dict_values(f::Function, dict::Dict{K,V}) -> Dict{K,Any}
 

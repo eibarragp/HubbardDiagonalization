@@ -179,7 +179,7 @@ function load_config_from_output_dir(datadir::String)
     if params === nothing
         error("No [parameters] section found in RunInfo.toml at $config_path")
     end
-    config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params))
+    config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params)...)
     config.u_test = 0  # We don't care about u_test
     return config
 end

@@ -1,9 +1,16 @@
-using HubbardDiagonalization: CSVUtil, DataHelpers, ExactDiagonalization as ED
+using HubbardDiagonalization: CSVUtil, DataHelpers, ExactDiagonalization as ED, Utils
 
 import TOML
 
 using ArgParse
 using Plots
+
+const variables = Set{String}(["u", "U", "T"])
+const variable_names = Dict(
+	"u" => "Chemical Potential (μ)",
+	"U" => "Interaction Strength (U)",
+	"T" => "Temperature (T)",
+)
 
 function parse_cli()
     s = ArgParseSettings()
@@ -52,7 +59,7 @@ function (@main)(args)
         end
         @warn "Skipping validation of input data."
 
-        test_config = ED.TestConfiguration(num_colors = 0, t = 0, u_test = 0, U = 0)
+        test_config = ED.TestConfiguration(num_colors = 0, t = 1, u_test = 0, U = 0)
         U = [0]
     else
         @info "Performing initial validation of input data..."
@@ -67,12 +74,6 @@ function (@main)(args)
 
     validate_config(config, U)
 
-    variables = Set{String}(["u", "U", "T"])
-    variable_names = Dict(
-        "u" => "Chemical Potential (μ)",
-        "U" => "Interaction Strength (U)",
-        "T" => "Temperature (T)",
-    )
     for (fig_name, fig_config) in config
         @info "Generating plot for $fig_name..."
         observable_ids = fig_config["observables"]["ids"]
@@ -105,22 +106,40 @@ function (@main)(args)
                 fixed_var = setdiff(variables, [axis, var])[1]
                 fixed_value_range = load_range(fig_config["fixed_$(fixed_var)"])
 
-                new_figure() = plot(
-                    xlabel = variable_names[axis],
-                    ylabel = observable_name,
-                    title = fig_name,
-                    legend_position = true,
-                    xscale = is_log(axis_range) ? :log10 : :identity,
-                )
+				is_logarithmic = is_log(axis_range)
 
                 for v1 in fixed_value_range
                     if is_overlay
-                        figure = new_figure()
+                        figure, filename = init_figure(
+							fig_config,
+							test_config,
+							observable_id,
+							observable_name,
+							is_logarithmic,
+							axis,
+							axis_range,
+							fixed_var,
+							v1,
+							secondary_var,
+							nothing,
+						)
                     end
 
                     for v2 in secondary_range
                         if !is_overlay
-                            figure = new_figure()
+                            figure, filename = init_figure(
+								fig_config,
+								test_config,
+								observable_id,
+								observable_name,
+								is_logarithmic,
+								axis,
+								axis_range,
+								fixed_var,
+								v1,
+								secondary_var,
+								v2,
+							)
                         end
 
                         for prefix_name in keys(prefixes)
@@ -128,6 +147,7 @@ function (@main)(args)
                                 figure,
                                 fig_config,
                                 cli_args["datadirs"],
+                                test_config,
                                 Us,
                                 observable_id,
                                 prefix_name,
@@ -188,7 +208,6 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
         end
 
         for (prefix_name, prefix_data) in prefixes
-            get!(prefix_data, "min_order", 1)
             if !haskey(prefix_data, "orders")
                 error(
                     "Figure $fig_name is missing required 'orders' field in prefix $prefix_name.",
@@ -196,6 +215,77 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
             end
         end
     end
+end
+
+function format_name(
+	name::String,
+	test_config::ED.TestConfiguration,
+	observable_id::String,
+	observable_name::String,
+	is_logarithmic::Bool,
+    axis::String,
+    axis_range::Vector{Float64},
+    fixed_var::String,
+    fixed_value::Float64,
+    secondary_var::String,
+    secondary_value::Union{Float64,Nothing},
+)
+	available_variables = Dict(
+		"oi" => observable_id,
+		"on" => observable_name,
+		"xn" => axis,
+		"log" => is_logarithmic ? "logarithmic" : "linear",
+		"xmin" => axis_range[1],
+		"xmax" => axis_range[2],
+		"f1n" => fixed_var,
+		"f1v" => fixed_value,
+		"f2n" => secondary_var,
+		"f2v" => secondary_value,
+		"t" => test_config.t,
+		"ut" => test_config.u_test,
+		"nc" => test_config.num_colors,
+		axis => axis_range,
+		fixed_var => fixed_value,
+		secondary_var => secondary_value,
+	)
+	return Utils.format_string(name, available_variables)
+end
+
+function init_figure(
+	fig_config::Dict{String,Any},
+	test_config::ED.TestConfiguration,
+	observable_id::String,
+	observable_name::String,
+	is_logarithmic::Bool,
+    axis::String,
+    axis_range::Vector{Float64},
+    fixed_var::String,
+    fixed_value::Float64,
+    secondary_var::String,
+    secondary_value::Union{Float64,Nothing},
+)
+	format(name) = format_name(
+			name,
+			test_config,
+			observable_id,
+			observable_name,
+			is_logarithmic,
+			axis,
+			axis_range,
+			fixed_var,
+			fixed_value,
+			secondary_var,
+			secondary_value,
+		)
+
+	fig = plot(
+		xlabel = variable_names[axis] * "/t",
+		ylabel = observable_name,
+		title = format(fig_config["title"]),
+		legend_position = true,
+		xscale = is_logarithmic ? :log10 : :identity,
+	)
+	return fig, format(fig_config["filename"])
 end
 
 function load_data_matrix(file::String)
@@ -314,6 +404,7 @@ function create_plots_for_resummation_method!(
     figure,
     fig_config::Dict{String,Any},
     datadirs::Vector{String},
+    test_config::ED.TestConfiguration,
     Us::Vector{Float64},
     observable_id::String,
     prefix::String,
@@ -405,15 +496,17 @@ function create_plots_for_resummation_method!(
                 cutoff_idxs[order] = cutoff
             end
         end
+    else
+        cutoff_idxs = Dict(order => 1 for order in orders)
     end
 
     for order in orders
-        temps, values = datasets[order]
+        x_vals, values = datasets[order]
         cutoff = cutoffs[order]
         overlay_var_label = is_overlay ? "$secondary_var = $secondary_value, " : ""
         plot!(
             figure,
-            temps[cutoff:end],
+            x_vals[cutoff:end] / test_config.t,
             values[cutoff:end],
             label = "$(overlay_var_label)$prefix Order $order",
         )
