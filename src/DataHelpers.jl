@@ -6,6 +6,7 @@ import ..ExactDiagonalization as ED
 import CSV
 import JSON3 as JSON
 import Logging
+import TOML
 
 # Set up plotting backend
 using Plots
@@ -20,7 +21,8 @@ end
         T_vals::AbstractVector{Float64},
         u_vals::AbstractVector{Float64},
         observable_data::Dict{String,Matrix{Float64}},
-        config::ED.TestConfiguration
+        config::ED.TestConfiguration,
+        output_dir::String,
     )
 
 Exports the computed observable data to CSV files.
@@ -30,7 +32,6 @@ function export_observable_data(
     u_vals::AbstractVector{Float64},
     observable_data::Dict{String,Matrix{Float64}},
     config::ED.TestConfiguration,
-    num_sites_str::String,
     output_dir::String,
 )
     @info "Exporting observable data..."
@@ -50,10 +51,10 @@ function export_observable_data(
             run_info_file,
             Dict(
                 "parameters" => Dict(
-                    "t" => config.t,
-                    "U" => config.U,
-                    "num_sites" => num_sites_str,
                     "num_colors" => config.num_colors,
+                    "t" => config.t,
+                    "u_test" => config.u_test,
+                    "U" => config.U,
                 ),
             ),
         )
@@ -80,7 +81,7 @@ function merge_results_with_nlce(
     nlce_orders::Vector{Int},
     validate_mode::String,
 )
-    if validate != "no"
+    if validate_mode != "no"
         @info "Validating input data..."
         validate_datasets(data_dirs, validate_mode == "scan_only")  # TODO: Perform additional checks!
         @info "Validation complete."

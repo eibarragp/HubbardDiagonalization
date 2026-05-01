@@ -67,7 +67,9 @@ function parse_cli()
     end
 
     parsed_args = parse_args(s)
-    parsed_args["validate"] = lowercase(parsed_args["validate"])
+    if haskey(parsed_args, "merge")
+        parsed_args["merge"]["validate"] = lowercase(parsed_args["merge"]["validate"])
+    end
 
     return parsed_args
 end
@@ -97,7 +99,7 @@ function (@main)(args)
     test_config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params)...)
     T_vals =
         plot_config["T_is_log"] ?
-        LogRange(
+        Base.LogRange(
             Float64(plot_config["T_min"]),
             Float64(plot_config["T_max"]),
             plot_config["T_count"],
@@ -184,9 +186,9 @@ function (@main)(args)
     # Whichever command was run, it should've stored its result in `observable_data`
     # Export the data based on the provided parameters
     Base.Filesystem.mkpath(parsed_args["outputdir"])
-    DataHelpers.export_observable_data(T_vals, u_vals, observable_data, test_config)
+    DataHelpers.export_observable_data(T_vals, u_vals, observable_data, test_config, parsed_args["outputdir"])
 
-    if parsed_args["diagonalize"]["generate-plots"] || parsed_args["%COMMAND%"] == "simple"
+    if parsed_args["generate-plots"] || parsed_args["%COMMAND%"] == "simple"
         DataHelpers.plot_observable_data(
             plot_config,
             T_vals,
