@@ -12,7 +12,9 @@ height = 1200
 # Ranges
 T_min = 2
 T_max = 25
-T_step = 0.02
+T_step = 0.02  # Linear mode only
+T_count = 500  # Logarithmic mode only
+T_is_log = false
 u_min = -1
 u_max = 1
 u_step = 0.5

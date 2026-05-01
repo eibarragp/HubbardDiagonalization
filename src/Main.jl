@@ -95,7 +95,13 @@ function (@main)(args)
     graph_config = config["graph"]
 
     test_config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params)...)
-    t_vals =
+    T_vals =
+        plot_config["T_is_log"] ?
+        LogRange(
+            Float64(plot_config["T_min"]),
+            Float64(plot_config["T_max"]),
+            plot_config["T_count"],
+        ) :
         Float64(plot_config["T_min"]):Float64(plot_config["T_step"]):Float64(
             plot_config["T_max"],
         )
@@ -141,7 +147,7 @@ function (@main)(args)
         @info "Defined observables: $(keys(observables))"
 
         observable_data = ED.diagonalize_and_compute_observables(
-            t_vals,
+            T_vals,
             u_vals,
             test_config,
             graph,
@@ -178,12 +184,12 @@ function (@main)(args)
     # Whichever command was run, it should've stored its result in `observable_data`
     # Export the data based on the provided parameters
     Base.Filesystem.mkpath(parsed_args["outputdir"])
-    DataHelpers.export_observable_data(t_vals, u_vals, observable_data, test_config)
+    DataHelpers.export_observable_data(T_vals, u_vals, observable_data, test_config)
 
     if parsed_args["diagonalize"]["generate-plots"] || parsed_args["%COMMAND%"] == "simple"
         DataHelpers.plot_observable_data(
             plot_config,
-            t_vals,
+            T_vals,
             u_vals,
             observable_data,
             test_config,

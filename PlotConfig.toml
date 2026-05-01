@@ -1,0 +1,11 @@
+[my_fig]
+title = "%on %f1n = %f1v"
+filename = "fig_%on_%f1n_%f1v.png"
+
+observables.ids = ["C_spin", "Density", "Energy", "Entropy", "Local Moment"]
+
+T_range = [0, 20]
+
+fixed_u = [0]
+
+prefixes.NLCE.orders = [1, 2, 3]
