@@ -489,12 +489,15 @@ function diagonalize_and_compute_observables(
         LinearAlgebra.BLAS.set_num_threads(nthreads())
 
         # Diagonalize the Hamiltonian block
+
+        # Create a symmetric view onto the part of H that we populated
+        # This allows us to use the more efficient symmetric diagonalization routines
         H_symmetric_view = LinearAlgebra.Symmetric(H, :U)
-        # Annoyingly, eigen() forces us to store all the eigenvectors
-        # in memory at once, but I can't find a good way around this
-        # Even the builtin `eigvals`/`eigvecs` functions are just
-        # wrappers around this.
-        eigen_data = LinearAlgebra.eigen(H_symmetric_view)
+
+        # Warning: eigen! will mangle H to save memory!
+        # Do not use H after this point.
+        # If it becomes necessary, use eigen() instead.
+        eigen_data = LinearAlgebra.eigen!(H_symmetric_view)
 
         # Reset BLAS to single-threaded mode
         LinearAlgebra.BLAS.set_num_threads(1)
