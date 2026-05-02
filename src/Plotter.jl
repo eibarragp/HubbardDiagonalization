@@ -517,8 +517,6 @@ function create_plots_for_resummation_method!(
         cutoff_idxs = Dict(order => 1 for order in orders)
     end
 
-    @info cutoff_idxs
-
     for order in orders
         x_vals, values = datasets[order]
         cutoff_idx = cutoff_idxs[order]
