@@ -140,7 +140,7 @@ batches = [
 		**batchinfo
 	} for orders, batchinfo in resource_data.items() if orders[0].isdigit()
 ]
-print(batches)
+
 batches_for_order = {}
 for batch in batches:
 	for order in batch['orders']:
