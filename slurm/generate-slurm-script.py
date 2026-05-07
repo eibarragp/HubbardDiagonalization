@@ -164,8 +164,6 @@ mergeable_batches = []
 
 next_cluster_id = 1
 for batch_idx, batch in enumerate(sorted(batches, key=lambda b: min(b['orders']))):
-	batch_params = batches_for_order.get(order, {})
-
 	relevant_clusters = list(filter(lambda id: len(cluster_data[id][0]) in batch['orders'], cluster_data.keys()))
 	num_clusters_in_batch = len(relevant_clusters)
 
@@ -173,8 +171,8 @@ for batch_idx, batch in enumerate(sorted(batches, key=lambda b: min(b['orders'])
 	array_range_end = array_range_start + num_clusters_in_batch - 1
 	next_cluster_id += num_clusters_in_batch
 
-	ncpus = batch_params['ncpus']
-	mem_gb = batch_params['mem_gb']
+	ncpus = batch['ncpus']
+	mem_gb = batch['mem_gb']
 
 	max_concurrent_tasks = min(max_num_cpus // ncpus, max_memory_gib // mem_gb, num_clusters_in_batch)
 	max_concurrent_tasks = max(1, max_concurrent_tasks)
@@ -197,7 +195,7 @@ for batch_idx, batch in enumerate(sorted(batches, key=lambda b: min(b['orders'])
 			f'diagonalize {cluster_file_absolute_path} $SLURM_ARRAY_TASK_ID',
 		'cpus_per_task': ncpus,
 		'memory_limit': f'{mem_gb}gb',
-		'time_limit': batch_params['time'],
+		'time_limit': batch['time'],
 		**general_params
 	}
 
