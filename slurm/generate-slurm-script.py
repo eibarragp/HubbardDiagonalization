@@ -52,7 +52,7 @@ def generate_script_from_template(filename, job_params):
 		template = f.read()
 	for key, value in job_params.items():
 		# Use a lambda to ensure that the replacement value is treated as a literal string
-		template = re.sub(rf'{{{{\s*{key}\s*}}}}', lambda x: value, template)
+		template = re.sub(rf'{{{{\s*{key}\s*}}}}', lambda _: str(value), template)
 
 	with open(filename, 'w') as f:
 		f.write(template)
@@ -62,7 +62,7 @@ def parse_range_or_int(value):
 		start, end = map(int, value.split('-'))
 		return range(start, end + 1)
 	else:
-		return int(value)
+		return [int(value)]
 
 #endregion
 
@@ -138,9 +138,9 @@ batches = [
 	{
 		'orders': parse_range_or_int(orders),
 		**batchinfo
-	} for orders, batchinfo in resource_data if orders[0].isdigit()
+	} for orders, batchinfo in resource_data.items() if orders[0].isdigit()
 ]
-
+print(batches)
 batches_for_order = {}
 for batch in batches:
 	for order in batch['orders']:
@@ -236,7 +236,7 @@ generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}_merge.slurm', merge
 
 job_run_script = ['#!/bin/bash\n\n']
 
-for batch_num in range(batch_idx):
+for batch_num in range(batch_idx+1):
 	if batch_num == 0 or batch_num in mergeable_batches:
 		dependency = ''
 	elif batch_num - 1 in mergeable_batches:
@@ -248,7 +248,7 @@ for batch_num in range(batch_idx):
 
 	job_run_script.append(f'batch_{batch_num}_jobid=$(sbatch --parsable {dependency} --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_batch_{batch_num}.slurm)\n')
 
-job_run_script.append(f'sbatch --dependency=afterok:$batch_{batch_idx-1}_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_merge.slurm\n')
+job_run_script.append(f'sbatch --dependency=afterok:$batch_{batch_idx}_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_merge.slurm\n')
 
 # Print the queued jobs
 job_run_script.append('squeue -u $USER\n')
