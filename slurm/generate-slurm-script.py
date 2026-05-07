@@ -239,7 +239,7 @@ for batch_num in range(batch_idx+1):
 		dependency = ''
 	elif batch_num - 1 in mergeable_batches:
 		dependency = ' '.join(
-			f'--dependency=afterok:$batch_{merged_batch_num-1}_jobid' for merged_batch_num in mergeable_batches
+			f'--dependency=afterok:$batch_{merged_batch_num}_jobid' for merged_batch_num in mergeable_batches
 		)
 	else:
 		dependency = f'--dependency=afterok:$batch_{batch_num-1}_jobid'
