@@ -47,7 +47,7 @@ def input_or_default(input_value, default_value):
 	return default_value if len(value.strip()) == 0 else value
 
 def generate_script_from_template(filename, job_params):
-	template_file = os.path.join(NLCE_HOME, f'{PROJECT_ROOT}/slurm/template.sh')
+	template_file = os.path.join(NLCE_HOME, f'{PROJECT_ROOT}/slurm/template.slurm')
 	with open(template_file, 'r') as f:
 		template = f.read()
 	for key, value in job_params.items():
@@ -113,14 +113,14 @@ if args.test is not None:
 		'job_name': f'NLCE_{job_name}',
 		'log_file': f'{NLCE_HOME}/logs/{job_name}_%j.out',
 		'time_limit': input('Time Limit: '),
-		'memory_limit': input('Memory Limit: '),
+		'memory_limit': input('Memory Limit: ') + "gb",
 		'cpus_per_task': input('CPUs per Task: '),
 		'array_info': '<no array>',
 		'command': f'{julia_base_command} -o "{NLCE_HOME}/output/{job_name}" diagonalize {cluster_file_absolute_path} {test_cluster_idx}',
 		**general_params,
 	}
 
-	generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}.sh', job_params)
+	generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}.slurm', job_params)
 	exit(0)
 
 #endregion
