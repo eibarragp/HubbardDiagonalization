@@ -149,7 +149,7 @@ for batch in batches:
 			exit(1)
 		batches_for_order[order] = batch
 
-for order, in batches_for_order.keys():
+for order in batches_for_order.keys():
 	if order > 1 and order - 1 not in batches_for_order:
 		print(f"Error: Resource file specifies a discontinuous range of orders!")
 		exit(1)
