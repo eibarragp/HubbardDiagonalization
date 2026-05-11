@@ -176,7 +176,7 @@ function load_config_from_output_dir(datadir::String)
     if !isfile(config_path)
         error("RunInfo.toml not found in $datadir")
     end
-    params = TOML.parsefile(config_path).get("parameters", nothing)
+    params = get(TOML.parsefile(config_path), "parameters", nothing)
     if params === nothing
         error("No [parameters] section found in RunInfo.toml at $config_path")
     end
