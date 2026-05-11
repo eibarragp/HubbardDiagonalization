@@ -23,7 +23,7 @@ echo "Running task $SLURM_ARRAY_TASK_ID on $SLURM_CPUS_PER_TASK cores"
 # Use our own package repository bc the system one is write-protected
 # But allow using the system one to enable bundled packages to work (Expanded by the empty entry after ':')
 export JULIA_DEPOT_PATH="{{ nlce_home }}/.julia:"
-export JULIA_NUM_THREADS={{ num_julia_threads }}  # Use all cores!
+export JULIA_NUM_THREADS={{ num_julia_threads }}
 export JULIA_NUM_GC_THREADS={{ num_mark_threads }},{{ num_sweep_threads }}
 export JULIA_HEAP_SIZE_HINT={{ heap_size_hint }}G
 cd {{ project_root }}
