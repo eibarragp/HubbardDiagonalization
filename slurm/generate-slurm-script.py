@@ -179,6 +179,8 @@ for batch_idx, batch in enumerate(sorted(batches, key=lambda b: min(b['orders'])
 	num_mark_threads = batch.get('mark_threads', num_julia_threads / 2)
 	num_sweep_threads = batch.get('sweep_threads', 0)
 
+	num_mark_threads = max(1, math.ceil(num_mark_threads))
+
 	max_concurrent_tasks = min(max_num_cpus // ncpus, max_memory_gib // mem_gb, num_clusters_in_batch)
 	max_concurrent_tasks = max(1, max_concurrent_tasks)
 
@@ -204,7 +206,7 @@ for batch_idx, batch in enumerate(sorted(batches, key=lambda b: min(b['orders'])
 		'num_julia_threads': num_julia_threads,
 		'num_mark_threads': num_mark_threads,
 		'num_sweep_threads': num_sweep_threads,
-		'heap_size_hint': batch.get('heap_size_hint', heap_size_default_scaling * mem_gb),
+		'heap_size_hint': batch.get('heap_size_hint', round(heap_size_default_scaling * mem_gb, 3)),
 		**general_params
 	}
 
@@ -226,6 +228,8 @@ num_merge_julia_threads = resource_data["merge"].get('julia_threads', resource_d
 num_merge_mark_threads = resource_data["merge"].get('mark_threads', num_merge_julia_threads // 2)
 num_merge_sweep_threads = resource_data["merge"].get('sweep_threads', 0)
 
+num_merge_mark_threads = max(1, math.ceil(num_merge_mark_threads))
+
 merge_job_params = {
 	'job_name': f'NLCE_{job_name}_merge',
 	'log_file': f'{NLCE_HOME}/logs/{job_name}_merge_%j.out',
@@ -239,7 +243,7 @@ merge_job_params = {
 	'num_julia_threads': num_merge_julia_threads,
 	'num_mark_threads': num_merge_mark_threads,
 	'num_sweep_threads': num_merge_sweep_threads,
-	'heap_size_hint': resource_data['merge'].get('heap_size_hint', heap_size_default_scaling * resource_data['merge']['mem_gb']),
+	'heap_size_hint': resource_data['merge'].get('heap_size_hint', round(heap_size_default_scaling * resource_data['merge']['mem_gb'], 3)),
 	**general_params
 }
 
