@@ -176,6 +176,7 @@ for batch_idx, batch in enumerate(sorted(batches, key=lambda b: min(b['orders'])
 	ncpus = batch['ncpus']
 	mem_gb = batch['mem_gb']
 	num_julia_threads = batch.get('julia_threads', ncpus)
+	# Fall back on Julia's defaults if unspecified
 	num_mark_threads = batch.get('mark_threads', num_julia_threads / 2)
 	num_sweep_threads = batch.get('sweep_threads', 0)
 
