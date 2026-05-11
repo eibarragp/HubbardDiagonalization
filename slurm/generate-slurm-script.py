@@ -35,6 +35,8 @@ cli_parser.add_argument('--no-mail', action='store_true', help="If specified, do
 
 args = cli_parser.parse_args()
 
+heap_size_default_scaling = 0.7  # Default to setting Julia's heap size hint to x% of the requested memory
+
 #endregion
 
 #region Helpful Functions
@@ -113,7 +115,7 @@ if args.test is not None:
 		'job_name': f'NLCE_{job_name}',
 		'log_file': f'{NLCE_HOME}/logs/{job_name}_%j.out',
 		'time_limit': input('Time Limit: '),
-		'memory_limit': input('Memory Limit: ') + "gb",
+		'memory_limit': input('Memory Limit: '),
 		'cpus_per_task': input('CPUs per Task: '),
 		'array_info': '<no array>',
 		'command': f'{julia_base_command} -o "{NLCE_HOME}/output/{job_name}" diagonalize {cluster_file_absolute_path} {test_cluster_idx}',
@@ -173,6 +175,9 @@ for batch_idx, batch in enumerate(sorted(batches, key=lambda b: min(b['orders'])
 
 	ncpus = batch['ncpus']
 	mem_gb = batch['mem_gb']
+	num_julia_threads = batch.get('julia_threads', ncpus)
+	num_mark_threads = batch.get('mark_threads', num_julia_threads / 2)
+	num_sweep_threads = batch.get('sweep_threads', 0)
 
 	max_concurrent_tasks = min(max_num_cpus // ncpus, max_memory_gib // mem_gb, num_clusters_in_batch)
 	max_concurrent_tasks = max(1, max_concurrent_tasks)
@@ -194,8 +199,12 @@ for batch_idx, batch in enumerate(sorted(batches, key=lambda b: min(b['orders'])
 			f'"{NLCE_HOME}/output/{job_name}_cluster_$SLURM_ARRAY_TASK_ID" '
 			f'diagonalize {cluster_file_absolute_path} $SLURM_ARRAY_TASK_ID',
 		'cpus_per_task': ncpus,
-		'memory_limit': f'{mem_gb}gb',
+		'memory_limit': mem_gb,
 		'time_limit': batch['time'],
+		'num_julia_threads': num_julia_threads,
+		'num_mark_threads': num_mark_threads,
+		'num_sweep_threads': num_sweep_threads,
+		'heap_size_hint': batch.get('heap_size_hint', heap_size_default_scaling * mem_gb),
 		**general_params
 	}
 
@@ -213,16 +222,24 @@ if "merge" not in resource_data:
 if resource_data["merge"]['ncpus'] > max_num_cpus or resource_data["merge"]['mem_gb'] > max_memory_gib:
 	print("Warning: Merge job resource requirements exceed set maximums!")
 
+num_merge_julia_threads = resource_data["merge"].get('julia_threads', resource_data["merge"]['ncpus'])
+num_merge_mark_threads = resource_data["merge"].get('mark_threads', num_merge_julia_threads // 2)
+num_merge_sweep_threads = resource_data["merge"].get('sweep_threads', 0)
+
 merge_job_params = {
 	'job_name': f'NLCE_{job_name}_merge',
 	'log_file': f'{NLCE_HOME}/logs/{job_name}_merge_%j.out',
-	'time_limit': resource_data["merge"]['time'],
-	'memory_limit': f'{resource_data["merge"]["mem_gb"]}gb',
-	'cpus_per_task': resource_data["merge"]['ncpus'],
+	'time_limit': resource_data['merge']['time'],
+	'memory_limit': resource_data['merge']['mem_gb'],
+	'cpus_per_task': resource_data['merge']['ncpus'],
 	'array_info': '<no array>',
 	'command': f'{julia_base_command} -o '
 		f'"{NLCE_HOME}/output/{job_name}_merged" '
 		f'merge {cluster_file_absolute_path} {" ".join(output_dirs)}',
+	'num_julia_threads': num_merge_julia_threads,
+	'num_mark_threads': num_merge_mark_threads,
+	'num_sweep_threads': num_merge_sweep_threads,
+	'heap_size_hint': resource_data['merge'].get('heap_size_hint', heap_size_default_scaling * resource_data['merge']['mem_gb']),
 	**general_params
 }
 
