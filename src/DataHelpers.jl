@@ -2,6 +2,7 @@ module DataHelpers
 
 import ..CSVUtil
 import ..ExactDiagonalization as ED
+import ..Utils
 
 import CSV
 import JSON3 as JSON
