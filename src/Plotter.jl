@@ -29,6 +29,12 @@ function parse_cli()
         arg_type = String
         default = "yes"
         range_tester = x -> lowercase(x) in ("yes", "no", "scan_only")
+        "--figure", "-f"
+        help = "Only generate plots for the specified figure(s) from the config file." *
+                " If passed multiple times, will generate plots for all specified figures." *
+                " By default, plots for all figures are generated."
+        arg_type = String
+        action = :append_arg
         "plot_config"
         help = "Path to a TOML file containing plotting configuration options."
         arg_type = String
@@ -51,6 +57,8 @@ end
 
 function (@main)(args)
     cli_args = parse_cli()
+
+    @info "Args: $cli_args"
 
     if cli_args["validate"] == "no"
         if length(cli_args["datadirs"]) > 1
@@ -78,6 +86,15 @@ function (@main)(args)
     Base.Filesystem.mkpath(output_dir)
 
     for (fig_name, fig_config) in config
+        if fig_name == "defaults"
+            continue
+        end
+
+        figure_requested = isempty(cli_args["figure"]) || fig_name in cli_args["figure"]
+        if !figure_requested
+            continue
+        end
+
         @info "Generating plots for $fig_name..."
         observable_ids = fig_config["observables"]["ids"]
         observable_names = fig_config["observables"]["names"]
@@ -85,8 +102,10 @@ function (@main)(args)
         for observable_id in observable_ids
             observable_name = observable_names[observable_id]
 
+            @info "Plotting observable $observable_id ($observable_name)..."
+
             for axis in variables
-                axis_range = get!(fig_config, "$(axis)_range", []) .|> Float64
+                axis_range = get!(fig_config, "$(axis)_range", [])
                 if isempty(axis_range)
                     continue
                 end
@@ -99,7 +118,7 @@ function (@main)(args)
                             continue
                         end
 
-                        range = load_range(fig_config["overlay"][2:4])
+                        range = load_range(fig_config["overlay"][2:end])
                         (true, var, range)
                     else
                         var = axis == "U" ? "u" : "U"
@@ -110,6 +129,7 @@ function (@main)(args)
                 fixed_value_range = load_range(fig_config["fixed_$(fixed_var)"])
 
                 is_logarithmic = is_log(axis_range)
+                axis_range = axis_range[1:2] .|> Float64
 
                 for v1 in fixed_value_range
                     if is_overlay
@@ -320,7 +340,7 @@ function load_data_matrix(
 end
 
 function load_range(range)
-    if range[1] == "range"
+    if get(range, 1, nothing) == "range"
         return Float64(range[2]):Float64(range[3]):Float64(range[4])
     else
         return Float64.(range)
@@ -347,10 +367,12 @@ function get_data_for_params(
         T_idx = findfirst(==(T), data_mat.T_vals)
         if T_idx === nothing
             @warn "No data found for U = $U_val and T = $T"
+            continue
         end
         u_idx = findfirst(==(u), data_mat.u_vals)
         if u_idx === nothing
             @warn "No data found for U = $U_val and μ = $u"
+            continue
         end
         data_series_val = data_mat.values[T_idx, u_idx]
 
