@@ -65,6 +65,7 @@ function (@main)(args)
         test_config, Us = DataHelpers.validate_datasets(
             cli_args["datadirs"],
             cli_args["validate"] == "scan_only",
+            false
         )
         @info "Validation complete."
     end

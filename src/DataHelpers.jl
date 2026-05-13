@@ -84,7 +84,7 @@ function merge_results_with_nlce(
 )
     if validate_mode != "no"
         @info "Validating input data..."
-        validate_datasets(data_dirs, validate_mode == "scan_only")  # TODO: Perform additional checks!
+        validate_datasets(data_dirs, validate_mode == "scan_only", true)  # TODO: Perform additional checks!
         @info "Validation complete."
     else
         @warn "Skipping validation of input data, per user request."
@@ -181,12 +181,11 @@ function load_config_from_output_dir(datadir::String)
     if params === nothing
         error("No [parameters] section found in RunInfo.toml at $config_path")
     end
-    params["u_test"] = 0  # We don't care about u_test
     config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params)...)
     return config
 end
 
-function validate_datasets(datadirs::Vector{String}, scan_only::Bool)
+function validate_datasets(datadirs::Vector{String}, scan_only::Bool, enforce_same_U::Bool)
     test_config = load_config_from_output_dir(datadirs[1])
     Us = [test_config.U]
 
@@ -194,7 +193,12 @@ function validate_datasets(datadirs::Vector{String}, scan_only::Bool)
         config = load_config_from_output_dir(datadir)
         push!(Us, config.U)
 
-        if !scan_only && config != test_config
+        # We don't care about u_test.
+        if !scan_only && (
+            (config.t != test_config.t) ||
+            (config.num_colors != test_config.num_colors) ||
+            (config.U != test_config.U && enforce_same_U)
+        )
             error("Test configuration mismatch between $datadir and $(datadirs[1]).")
         end
     end
