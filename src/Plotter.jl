@@ -32,9 +32,10 @@ function parse_cli()
         default = "yes"
         range_tester = x -> lowercase(x) in ("yes", "no", "scan_only")
         "--figure", "-f"
-        help = "Only generate plots for the specified figure(s) from the config file." *
-                " If passed multiple times, will generate plots for all specified figures." *
-                " By default, plots for all figures are generated."
+        help =
+            "Only generate plots for the specified figure(s) from the config file." *
+            " If passed multiple times, will generate plots for all specified figures." *
+            " By default, plots for all figures are generated."
         arg_type = String
         action = :append_arg
         "plot_config"
@@ -75,7 +76,7 @@ function (@main)(args)
         test_config, Us = DataHelpers.validate_datasets(
             cli_args["datadirs"],
             cli_args["validate"] == "scan_only",
-            false
+            false,
         )
         @info "Validation complete."
     end
@@ -101,7 +102,8 @@ function (@main)(args)
         observable_ids = fig_config["observables"]["ids"]
         observable_names = fig_config["observables"]["names"]
 
-        num_series_per_param_set = sum(values(fig_config["prefixes"]) .|> Fix2(getindex, "orders") .|> length)
+        num_series_per_param_set =
+            sum(values(fig_config["prefixes"]) .|> Fix2(getindex, "orders") .|> length)
 
         for observable_id in observable_ids
             observable_name = observable_names[observable_id]
@@ -311,7 +313,7 @@ function init_figure(
         fixed_value,
         secondary_var,
         secondary_value,
-        fig_config["name_num_round_digits"]
+        fig_config["name_num_round_digits"],
     )
 
     fig = plot(;
@@ -320,7 +322,10 @@ function init_figure(
         title = format(fig_config["title"]),
         legend_position = true,
         xscale = is_logarithmic ? :log10 : :identity,
-        color_palette = resample(colorschemes[Symbol(fig_config["color_palette"])], num_series),
+        color_palette = resample(
+            colorschemes[Symbol(fig_config["color_palette"])],
+            num_series,
+        ),
         Utils.convert_strings_to_symbols(fig_config["plot_params"])...,
     )
     return fig, format(fig_config["filename"])
@@ -563,7 +568,10 @@ function create_plots_for_resummation_method!(
         cutoff_idx = cutoff_idxs[order]
         order_label = show_order_label ? "Order $order" : ""
 
-        label = [overlay_var_label, prefix_label, order_label] |> Fix1(filter, !isempty) |> Fix2(join, ", ")
+        label =
+            [overlay_var_label, prefix_label, order_label] |>
+            filter(!isempty) |>
+            Fix2(join, ", ")
         label_kwarg = isempty(label) ? () : (label = label,)
 
         plot!(

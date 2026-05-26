@@ -186,7 +186,13 @@ function (@main)(args)
     # Whichever command was run, it should've stored its result in `observable_data`
     # Export the data based on the provided parameters
     Base.Filesystem.mkpath(parsed_args["outputdir"])
-    DataHelpers.export_observable_data(T_vals, u_vals, observable_data, test_config, parsed_args["outputdir"])
+    DataHelpers.export_observable_data(
+        T_vals,
+        u_vals,
+        observable_data,
+        test_config,
+        parsed_args["outputdir"],
+    )
 
     if parsed_args["generate-plots"] || parsed_args["%COMMAND%"] == "simple"
         DataHelpers.plot_observable_data(
