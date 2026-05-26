@@ -382,7 +382,10 @@ function get_data_for_params(
 )
     valid_Us = Int[]
     data_series = Float64[]
-    for U_val in U
+    for U_val in Us
+        if U_val < U[1] || U_val > U[end]
+            continue
+        end
         data_mat = load_data_matrix(datadirs, Us, U_val, observable_id, prefix, order)
         T_idx = findfirst(==(T), data_mat.T_vals)
         if T_idx === nothing
