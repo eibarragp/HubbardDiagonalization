@@ -39,4 +39,15 @@ map_dict_values(::Type{T}, f::Function, dict::Dict{K,V}) where {K,V,T} =
     Dict{K,T}((k, T(f(v))) for (k, v) in dict)
 map_dict_values(f::Function, dict::Dict{K,V}) where {K,V} = map_dict_values(Any, f, dict)
 
+"""
+    recursive_merge(dict1::AbstractDict, dict2::AbstractDict) -> Dict
+
+Recursively merges two dictionaries.
+Follows the default 'merge()' semantics (i.e. the value from `dict2` will overwrite the value from `dict1`).
+If a dictionary value is encountered, it will be merged recursively instead of being overwritten.
+"""
+recursive_merge(dict1::AbstractDict, dict2::AbstractDict) = mergewith(dict1, dict2) do v1, v2
+    isa(v1, AbstractDict) && isa(v2, AbstractDict) ? recursive_merge(v1, v2) : v2
+end
+
 end

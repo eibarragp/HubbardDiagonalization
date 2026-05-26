@@ -200,34 +200,32 @@ function (@main)(args)
 end
 
 function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
-    if haskey(config, "defaults")
-        defaults = config["defaults"]
+    default_params = Dict(
+        "observables" => Dict("ids" => [], "names" => Dict()),
+        "fixed_U" => Us,
+        "atol" => 1e-3,
+        "rtol" => 0.05,
+        "prefixes" => Dict(),
+        "plot_params" => Dict(
+            "color_pallette" => :coolwarm,
+        ),
+        "subplot_params" => Dict(),
+    )
 
-        for figure in keys(config)
-            if figure == "defaults"
-                continue
-            end
-            config[figure] = merge(defaults, config[figure])
+    defaults = get(config, "defaults", Dict())
+    defaults = Utils.recursive_merge(default_params, defaults)
+    config["defaults"] = defaults
+
+    for figure in keys(config)
+        if figure == "defaults"
+            continue
         end
+        config[figure] = Utils.recursive_merge(defaults, config[figure])
     end
 
     for (fig_name, fig_config) in config
-        if !haskey(fig_config, "observables") || !haskey(fig_config["observables"], "ids")
-            error("Figure $fig_name is missing required 'observables.ids' field.")
-        end
-
-        get!(fig_config["observables"], "names", Dict())
         for observable_id in fig_config["observables"]["ids"]
             get!(fig_config["observables"]["names"], observable_id, observable_id)
-        end
-
-        get!(fig_config, "fixed_U", Us)
-
-        get!(fig_config, "atol", 1e-3)
-        get!(fig_config, "rtol", 0.05)
-
-        if isempty(get!(fig_config, "prefixes", []))
-            error("Figure $fig_name is missing required 'prefixes' field.")
         end
 
         for (prefix_name, prefix_data) in fig_config["prefixes"]
