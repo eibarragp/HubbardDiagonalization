@@ -525,9 +525,6 @@ function create_plots_for_resummation_method!(
             values = datasets[order][2]
             cmp_values = datasets[cmp_order][2]
 
-            # By high temperature, everything should be converged
-            converged_value = values[end]
-
             # All orders (with the same params) should be generated from the same temperatures,
             # so the relevant indicies should be identical.
             cutoff = findlast(collect(zip(values, cmp_values))) do (value, cmp_value)
@@ -539,8 +536,8 @@ function create_plots_for_resummation_method!(
                     # Converged if:
                     # 1) Difference is within tolerance, or
                     abs(value - cmp_value) <= atol ||
-                    # 2) Difference is small relative to distance from the converged value
-                    abs(value - cmp_value) <= rtol * abs(value - converged_value)
+                    # 2) Difference is small relative to the current value
+                    abs(value - cmp_value) / value <= rtol
                 )
             end
 
