@@ -3,6 +3,7 @@ using HubbardDiagonalization: CSVUtil, DataHelpers, ExactDiagonalization as ED, 
 import TOML
 
 using ArgParse
+using Base: Fix1, Fix2
 using ColorSchemes
 using Plots
 
@@ -554,15 +555,26 @@ function create_plots_for_resummation_method!(
         cutoff_idxs = Dict(order => 1 for order in orders)
     end
 
+    show_prefix_label = length(fig_config["prefixes"]) > 1
+    show_order_label = length(orders) > 1
+
+    overlay_var_label = is_overlay ? "$secondary_var = $secondary_value" : ""
+    prefix_label = show_prefix_label ? "$prefix" : ""
+
     for order in orders
         x_vals, values = datasets[order]
         cutoff_idx = cutoff_idxs[order]
-        overlay_var_label = is_overlay ? "$secondary_var = $secondary_value, " : ""
+        order_label = show_order_label ? "Order $order" : ""
+
+        label = [overlay_var_label, prefix_label, order_label] |> Fix1(filter, !isempty) |> Fix2(join, ", ")
+        label_kwarg = isempty(label) ? () : (label = label,)
+
         plot!(
             figure,
             x_vals[cutoff_idx:end] / test_config.t,
-            values[cutoff_idx:end],
-            label = "$(overlay_var_label)$prefix Order $order",
+            values[cutoff_idx:end];
+            label_kwarg...,
+            Utils.convert_strings_to_symbols(fig_config["series_params"])...,
         )
     end
 end
