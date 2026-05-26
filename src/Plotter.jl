@@ -210,6 +210,7 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
             "color_pallette" => :coolwarm,
         ),
         "subplot_params" => Dict(),
+        "name_num_round_digits" => 3,
     )
 
     defaults = get(config, "defaults", Dict())
@@ -250,7 +251,14 @@ function format_name(
     fixed_value::Float64,
     secondary_var::String,
     secondary_value::Union{Float64,Nothing},
+    name_num_round_digits::Int,
 )
+    axis_range = round.(axis_range, digits = name_num_round_digits)
+    fixed_value = round(fixed_value, digits = name_num_round_digits)
+    if secondary_value !== nothing
+        secondary_value = round(secondary_value, digits = name_num_round_digits)
+    end
+
     available_variables = Dict(
         "oi" => observable_id,
         "on" => observable_name,
@@ -297,6 +305,7 @@ function init_figure(
         fixed_value,
         secondary_var,
         secondary_value,
+        fig_config["name_num_round_digits"]
     )
 
     fig = plot(
