@@ -3,6 +3,7 @@ using HubbardDiagonalization: CSVUtil, DataHelpers, ExactDiagonalization as ED, 
 import TOML
 
 using ArgParse
+using ColorSchemes
 using Plots
 
 const variables = Set{String}(["u", "U", "T"])
@@ -99,6 +100,8 @@ function (@main)(args)
         observable_ids = fig_config["observables"]["ids"]
         observable_names = fig_config["observables"]["names"]
 
+        num_series_per_param_set = sum(values(fig_config["prefixes"]) .|> Fix2(getindex, "orders") .|> length)
+
         for observable_id in observable_ids
             observable_name = observable_names[observable_id]
 
@@ -135,6 +138,7 @@ function (@main)(args)
                     if is_overlay
                         figure, filename = init_figure(
                             fig_config,
+                            length(secondary_range) * num_series_per_param_set,
                             test_config,
                             observable_id,
                             observable_name,
@@ -152,6 +156,7 @@ function (@main)(args)
                         if !is_overlay
                             figure, filename = init_figure(
                                 fig_config,
+                                num_series_per_param_set,
                                 test_config,
                                 observable_id,
                                 observable_name,
@@ -206,11 +211,10 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
         "atol" => 1e-3,
         "rtol" => 0.05,
         "prefixes" => Dict(),
-        "plot_params" => Dict(
-            "color_pallette" => :coolwarm,
-        ),
-        "subplot_params" => Dict(),
+        "color_palette" => "coolwarm",
         "name_num_round_digits" => 3,
+        "plot_params" => Dict(),
+        "series_params" => Dict(),
     )
 
     defaults = get(config, "defaults", Dict())
@@ -282,6 +286,7 @@ end
 
 function init_figure(
     fig_config::Dict{String,Any},
+    num_series::Int,
     test_config::ED.TestConfiguration,
     observable_id::String,
     observable_name::String,
@@ -308,12 +313,14 @@ function init_figure(
         fig_config["name_num_round_digits"]
     )
 
-    fig = plot(
+    fig = plot(;
         xlabel = variable_names[axis] * "/t",
         ylabel = observable_name,
         title = format(fig_config["title"]),
         legend_position = true,
         xscale = is_logarithmic ? :log10 : :identity,
+        color_palette = resample(colorschemes[Symbol(fig_config["color_palette"])], num_series),
+        Utils.convert_strings_to_symbols(fig_config["plot_params"])...,
     )
     return fig, format(fig_config["filename"])
 end

@@ -1,11 +1,11 @@
 module Utils
 
 """
-    convert_strings_to_symbols(dict::Dict{String,Any}) -> Dict{Symbol,Any}
+    convert_strings_to_symbols(dict::AbstractDict) -> Dict{Symbol,Any}
 
 Convert the keys of a dictionary from `String` to `Symbol`. This allows a dictionary loaded from a TOML file to be used as a keyword argument list.
 """
-function convert_strings_to_symbols(dict::Dict{String,Any})
+function convert_strings_to_symbols(dict::AbstractDict)
     new_dict = Dict{Symbol,Any}()
     for (key, value) in dict
         new_dict[Symbol(key)] = value
