@@ -1,5 +1,6 @@
 using HubbardDiagonalization: CSVUtil, DataHelpers, ExactDiagonalization as ED, Utils
 
+import Measures
 import TOML
 
 using ArgParse
@@ -216,7 +217,7 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
         "prefixes" => Dict(),
         "color_palette" => "coolwarm",
         "name_num_round_digits" => 3,
-        "plot_params" => Dict(),
+        "plot_params" => Dict("minorgrid" => true),
         "series_params" => Dict(),
     )
 
@@ -242,6 +243,10 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
                     "Figure $fig_name is missing required 'orders' field in prefix $prefix_name.",
                 )
             end
+        end
+
+        if !(get(fig_config["plot_params"], "margin", 0) isa Measures.Length)
+            fig_config["plot_params"]["margin"] = Measures.Length(:mm, fig_config["plot_params"]["margin"])
         end
     end
 end
@@ -320,7 +325,7 @@ function init_figure(
         xlabel = variable_names[axis] * "/t",
         ylabel = observable_name,
         title = format(fig_config["title"]),
-        legend_position = true,
+        legend_position = num_series > 1 ? :best : :none,
         xscale = is_logarithmic ? :log10 : :identity,
         color_palette = resample(
             colorschemes[Symbol(fig_config["color_palette"])],
@@ -575,13 +580,12 @@ function create_plots_for_resummation_method!(
             [overlay_var_label, prefix_label, order_label] |>
             filter(!isempty) |>
             Fix2(join, ", ")
-        label_kwarg = isempty(label) ? () : (label = label,)
 
         plot!(
             figure,
             x_vals[cutoff_idx:end] / test_config.t,
             values[cutoff_idx:end];
-            label_kwarg...,
+            label = label,
             Utils.convert_strings_to_symbols(fig_config["series_params"])...,
         )
     end
