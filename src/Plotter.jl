@@ -232,6 +232,10 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
         config[figure] = Utils.recursive_merge(defaults, config[figure])
     end
 
+    type_parsers = Dict(Measures.Length => Fix1(Measures.Length, :mm), Symbol => Symbol)
+    typed_plot_fields = Dict("margin" => Measures.Length)
+    typed_series_fields = Dict("markershape" => Symbol)
+
     for (fig_name, fig_config) in config
         for observable_id in fig_config["observables"]["ids"]
             get!(fig_config["observables"]["names"], observable_id, observable_id)
@@ -245,8 +249,17 @@ function validate_config(config::Dict{String,Any}, Us::Vector{Float64})
             end
         end
 
-        if !(get(fig_config["plot_params"], "margin", 0) isa Measures.Length)
-            fig_config["plot_params"]["margin"] = Measures.Length(:mm, fig_config["plot_params"]["margin"])
+        plot_params = fig_config["plot_params"]
+        for (field, field_type) in typed_plot_fields
+            if haskey(plot_params, field) && !(plot_params[field] isa field_type)
+                plot_params[field] = type_parsers[field_type](plot_params[field])
+            end
+        end
+        series_params = fig_config["series_params"]
+        for (field, field_type) in typed_series_fields
+            if haskey(series_params, field) && !(series_params[field] isa field_type)
+                series_params[field] = type_parsers[field_type](series_params[field])
+            end
         end
     end
 end
