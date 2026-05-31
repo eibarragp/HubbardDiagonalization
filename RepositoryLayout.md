@@ -17,6 +17,7 @@ Here is a basic overview of the project layout.
   | |- Graphs.jl                  # Defines a basic undirected graph structure and some common graph types.
   | |- HubbardDiagonalization.jl  # Main module definition (ensures that all files are loaded in the right order)
   | |- Main.jl                    # Main entry point; Handles command line parsing and high-level logic
+  | |- Plotter.jl                 # A plotting tool to help visualize results
   | |- StateEnumeration.jl        # Helper functions for enumerating states under various constraints
   | |- SymmetricMatrices.jl       # Defines a SymmetricMatrix type that stores only the lower-triangular part of the matrix.
   | \- Utils.jl                   # Miscellaneous utility functions (mostly used for working around Julia capabilities).
