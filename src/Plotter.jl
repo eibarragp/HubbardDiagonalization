@@ -125,15 +125,15 @@ function (@main)(args)
                             continue
                         end
 
-                        range = load_range(fig_config["overlay"][2:end])
+                        range = load_fixed_range(fig_config["overlay"][2:end])
                         (true, var, range)
                     else
                         var = axis == "U" ? "u" : "U"
-                        (false, var, load_range(fig_config["fixed_$(var)"]))
+                        (false, var, load_fixed_range(fig_config["fixed_$(var)"]))
                     end
 
                 fixed_var = setdiff(variables, [axis, var]) |> only
-                fixed_value_range = load_range(fig_config["fixed_$(fixed_var)"])
+                fixed_value_range = load_fixed_range(fig_config["fixed_$(fixed_var)"])
 
                 is_logarithmic = is_log(axis_range)
                 axis_range = axis_range[1:2] .|> Float64
@@ -280,9 +280,9 @@ function format_name(
 )
     axis_range = round.(axis_range, digits = name_num_round_digits)
     fixed_value = round(fixed_value, digits = name_num_round_digits)
-    if secondary_value !== nothing
-        secondary_value = round(secondary_value, digits = name_num_round_digits)
-    end
+    secondary_value =
+        isnothing(secondary_value) ? "overlay" :
+        round(secondary_value, digits = name_num_round_digits)
 
     available_variables = Dict(
         "oi" => observable_id,
@@ -377,7 +377,7 @@ function load_data_matrix(
     )
 end
 
-function load_range(range)
+function load_fixed_range(range)
     if get(range, 1, nothing) == "range"
         return Float64(range[2]):Float64(range[3]):Float64(range[4])
     else
@@ -401,7 +401,7 @@ function get_data_for_params(
     valid_Us = Int[]
     data_series = Float64[]
     for U_val in Us
-        if U_val < U[1] || U_val > U[end]
+        if U_val < U[1] || U_val > U[2]
             continue
         end
         data_mat = load_data_matrix(datadirs, Us, U_val, observable_id, prefix, order)
@@ -444,7 +444,7 @@ function get_data_for_params(
     data_series = data_mat.values[:, idx]
 
     min_idx = findfirst(>=(T[1]), axis_range)
-    max_idx = findlast(<=(T[end]), axis_range)
+    max_idx = findlast(<=(T[2]), axis_range)
 
     return axis_range[min_idx:max_idx], data_series[min_idx:max_idx]
 end
@@ -469,7 +469,7 @@ function get_data_for_params(
     data_series = data_mat.values[idx, :]
 
     min_idx = findfirst(>=(u[1]), axis_range)
-    max_idx = findlast(<=(u[end]), axis_range)
+    max_idx = findlast(<=(u[2]), axis_range)
 
     return axis_range[min_idx:max_idx], data_series[min_idx:max_idx]
 end
