@@ -528,8 +528,9 @@ function create_plots_for_resummation_method!(
             # Check, in order:
             # 1) The next order
             # 2) The next largest order that we have data for
-            # 3) The next smallest order that we have data for
-            # 4) Give up and don't use a cutoff
+            # 3) The previous order
+            # 4) The next smallest order that we have data for
+            # 5) Give up and don't use a cutoff
             cmp_order = order + 1
             if !haskey(datasets, cmp_order)
                 larger_orders = filter(>(order), keys(datasets))
@@ -538,12 +539,16 @@ function create_plots_for_resummation_method!(
                 end
             end
             if !haskey(datasets, cmp_order)
+                cmp_order = order - 1
+            end
+            if !haskey(datasets, cmp_order)
                 smaller_orders = filter(<(order), keys(datasets))
                 if !isempty(smaller_orders)
                     cmp_order = maximum(smaller_orders)
                 end
             end
             if !haskey(datasets, cmp_order)
+                @warn "Could not find another order for $observable_id with $prefix order $order to check convergence!"
                 cutoff_idxs[order] = 1
                 continue
             end
@@ -563,7 +568,7 @@ function create_plots_for_resummation_method!(
                     # 1) Difference is within tolerance, or
                     abs(value - cmp_value) <= atol ||
                     # 2) Difference is small relative to the current value
-                    abs(value - cmp_value) / value <= rtol
+                    abs((value - cmp_value) / value) <= rtol
                 )
             end
 
