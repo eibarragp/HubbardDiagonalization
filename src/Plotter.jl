@@ -496,8 +496,8 @@ function create_plots_for_resummation_method!(
 
     datasets = Dict{Int,Tuple{Vector{Float64},Vector{Float64}}}()
 
-    # Also load data for the next order to enable convergence testing.
-    orders_to_load = axis == "T" ? union(orders, orders .+ 1) : orders
+    # Also load data for adjacent orders to enable convergence testing.
+    orders_to_load = axis == "T" ? union(orders, orders .- 1, orders .+ 1) : orders
 
     for order in orders_to_load
         try
