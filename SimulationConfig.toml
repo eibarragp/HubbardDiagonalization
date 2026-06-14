@@ -1,8 +1,8 @@
 [parameters]
-num_colors = 2
-t = 1.4
+num_colors = 3
+t = 1
 u_test = 0.0
-U = 8.17
+U = 8
 
 [plot]
 # Plot Characteristics
@@ -10,12 +10,14 @@ width = 1500
 height = 1200
 
 # Ranges
-T_min = 2
-T_max = 25
-T_step = 0.02
-u_min = -1
-u_max = 1
-u_step = 0.5
+T_min = 0.01
+T_max = 15
+T_step = 0.02  # Linear mode only
+T_count = 1500  # Logarithmic mode only
+T_is_log = true
+u_min = -20
+u_max = 20
+u_step = 0.05
 
 # Specific Plots to Generate
 T_fixed_plots = [0.02, 0.1, 0.5]

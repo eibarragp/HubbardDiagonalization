@@ -1,17 +1,32 @@
 module Utils
 
 """
-    convert_strings_to_symbols(dict::Dict{String,Any}) -> Dict{Symbol,Any}
+    convert_strings_to_symbols(dict::AbstractDict) -> Dict{Symbol,Any}
 
 Convert the keys of a dictionary from `String` to `Symbol`. This allows a dictionary loaded from a TOML file to be used as a keyword argument list.
 """
-function convert_strings_to_symbols(dict::Dict{String,Any})
+function convert_strings_to_symbols(dict::AbstractDict)
     new_dict = Dict{Symbol,Any}()
     for (key, value) in dict
         new_dict[Symbol(key)] = value
     end
     return new_dict
 end
+
+format_string(s::String, args::Dict{String,Any}) = replace(
+    s,
+    Regex("%($(join(keys(args), "|"))|%)") =>
+        m -> begin
+            key = m[2:end]
+            if key == "%"
+                return "%"
+            elseif haskey(args, key)
+                return string(args[key])
+            else
+                error("Matched invalid escape sequence: $m. This should not be possible!")
+            end
+        end,
+)
 
 """
     map_dict_values(f::Function, dict::Dict{K,V}) -> Dict{K,Any}
@@ -23,5 +38,17 @@ dict: The dictionary whose values should be transformed.
 map_dict_values(::Type{T}, f::Function, dict::Dict{K,V}) where {K,V,T} =
     Dict{K,T}((k, T(f(v))) for (k, v) in dict)
 map_dict_values(f::Function, dict::Dict{K,V}) where {K,V} = map_dict_values(Any, f, dict)
+
+"""
+    recursive_merge(dict1::AbstractDict, dict2::AbstractDict) -> Dict
+
+Recursively merges two dictionaries.
+Follows the default 'merge()' semantics (i.e. the value from `dict2` will overwrite the value from `dict1`).
+If a dictionary value is encountered, it will be merged recursively instead of being overwritten.
+"""
+recursive_merge(dict1::AbstractDict, dict2::AbstractDict) =
+    mergewith(dict1, dict2) do v1, v2
+        isa(v1, AbstractDict) && isa(v2, AbstractDict) ? recursive_merge(v1, v2) : v2
+    end
 
 end

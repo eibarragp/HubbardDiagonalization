@@ -5,6 +5,7 @@ using HubbardDiagonalization:
 import CUDA
 import CSV
 import JSON3 as JSON
+import LinearAlgebra
 import Logging
 import TOML
 
@@ -30,6 +31,8 @@ function parse_cli()
         default = "output"
         "--cuda"
         help = "Use CUDA"
+        "--generate-plots"
+        help = "Generate plots for the diagonalized cluster(s). Assumed 'true' when 'simple' is specified."
         action = :store_true
         "diagonalize"
         help = "Diagonalize and compute observables for the specified cluster"
@@ -43,9 +46,6 @@ function parse_cli()
     end
 
     @add_arg_table s["diagonalize"] begin
-        "--generate-plots"
-        help = "By default, plot generation is skipped for cluster runs. Use this flag to reenable it."
-        action = :store_true
         "clusterfile"
         help = "Path to the cluster info file."
         arg_type = String
@@ -55,6 +55,11 @@ function parse_cli()
     end
 
     @add_arg_table s["merge"] begin
+        "--validate"
+        help = "How to validate input data before processing. (Options: yes, no, scan_only)"
+        arg_type = String
+        default = "yes"
+        range_tester = x -> lowercase(x) in ("yes", "no", "scan_only")
         "clusterfile"
         help = "Path to the cluster info file."
         arg_type = String
@@ -64,7 +69,12 @@ function parse_cli()
         nargs = '+'
     end
 
-    return parse_args(s)
+    parsed_args = parse_args(s)
+    if haskey(parsed_args, "merge")
+        parsed_args["merge"]["validate"] = lowercase(parsed_args["merge"]["validate"])
+    end
+
+    return parsed_args
 end
 
 """
@@ -75,11 +85,12 @@ The main entry point! Handles the high-level control flow of the program.
 function (@main)(args)
     # Parse command line arguments
     parsed_args = parse_cli()
-    @info "Args: $parsed_args"
 
     # Install our own logger for the duration of the program
     old_logger =
         Logging.global_logger(DataHelpers.FlushingLogger(stdout, parsed_args["loglevel"]))
+
+    @info "Args: $parsed_args"
 
     # Parse configuration file
     config = TOML.parsefile("SimulationConfig.toml")
@@ -89,7 +100,13 @@ function (@main)(args)
     graph_config = config["graph"]
 
     test_config = ED.TestConfiguration(; Utils.convert_strings_to_symbols(params)...)
-    t_vals =
+    T_vals =
+        plot_config["T_is_log"] ?
+        Base.LogRange(
+            Float64(plot_config["T_min"]),
+            Float64(plot_config["T_max"]),
+            plot_config["T_count"],
+        ) :
         Float64(plot_config["T_min"]):Float64(plot_config["T_step"]):Float64(
             plot_config["T_max"],
         )
@@ -112,12 +129,6 @@ function (@main)(args)
 
         cluster = DataHelpers.sorted_clusters(cluster_data)[cluster_idx]
         graph = Graphs.from_cluster(cluster)
-
-        # Unless told otherwise, don't generate plots
-        if !parsed_args["diagonalize"]["generate-plots"]
-            plot_config["T_fixed_plots"] = []
-            plot_config["u_fixed_plots"] = []
-        end
     elseif parsed_args["%COMMAND%"] == "simple"
         # For simple runs, we just generate a linear chain graph with the specified number of sites.
         graph = Graphs.linear_chain(graph_config["num_sites"])
@@ -144,11 +155,16 @@ function (@main)(args)
             end
         end
 
+        # Run BLAS in single-threaded mode
+        # BLAS's multi-threading doesn't play nicely with Julia's multi-threading
+        # so by default we'll handle it all ourselves.
+        LinearAlgebra.BLAS.set_num_threads(1)
+
         observables = ED.default_observables(test_config, graph)
         @info "Defined observables: $(keys(observables))"
 
         observable_data = ED.diagonalize_and_compute_observables(
-            t_vals,
+            T_vals,
             u_vals,
             test_config,
             graph,
@@ -175,6 +191,7 @@ function (@main)(args)
             data_dirs,
             observable_names,
             plot_config["nlce_orders"],
+            parsed_args["merge"]["validate"],
         )
     else
         error(
@@ -184,16 +201,27 @@ function (@main)(args)
 
     # Whichever command was run, it should've stored its result in `observable_data`
     # Export the data based on the provided parameters
+    Base.Filesystem.mkpath(parsed_args["outputdir"])
     DataHelpers.export_observable_data(
-        plot_config,
-        t_vals,
+        T_vals,
         u_vals,
         observable_data,
         test_config,
-        @isdefined(graph) ? string(Graphs.num_sites(graph)) : "NLCE",
-        parsed_args["%COMMAND%"] == "merge",
         parsed_args["outputdir"],
     )
+
+    if parsed_args["generate-plots"] || parsed_args["%COMMAND%"] == "simple"
+        DataHelpers.plot_observable_data(
+            plot_config,
+            T_vals,
+            u_vals,
+            observable_data,
+            test_config,
+            @isdefined(graph) ? string(Graphs.num_sites(graph)) : "NLCE",
+            parsed_args["%COMMAND%"] == "merge",
+            parsed_args["outputdir"],
+        )
+    end
 
     @info "Done."
 

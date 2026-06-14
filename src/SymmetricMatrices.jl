@@ -1,4 +1,7 @@
-"Defines a SymmetricMatrix type that stores only the lower-triangular part of the matrix."
+"""
+Defines a SymmetricMatrix type that stores only the lower-triangular part of the matrix.
+-- DEPRECATED: For large matrices the time penalty is not worth it --
+"""
 module SymmetricMatrices
 
 export SymmetricMatrix

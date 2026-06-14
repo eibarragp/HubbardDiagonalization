@@ -373,8 +373,7 @@ function diagonalize_and_compute_observables(
     @info "Computing Hamiltonian blocks and observables..."
     # The number of fermions and the color configuration are conserved over tunneling,
     # so we can break the Hamiltonian into blocks labeled by these two quantities
-    @threads :greedy for (config_idx, (N_fermions, color_configuration)) in
-                         collect(enumerate(system_configurations))
+    for (config_idx, (N_fermions, color_configuration)) in enumerate(system_configurations)
         # Size of the Hamiltonian block
         L = block_sizes[config_idx]
         H = zeros(Float64, L, L)
@@ -385,7 +384,9 @@ function diagonalize_and_compute_observables(
         # as long as we're consistent, the matrix elements will be in the right place
         # state_i and state_j are arrays of integers, where each integer is a bitmask
         # representing the occupation of each site for a given color
-        for (i, state_i) in enumerate(enumerate_multistate(num_sites, color_configuration))
+        @threads :greedy for (i, state_i) in collect(
+            enumerate(enumerate_multistate(num_sites, color_configuration)),
+        )
             # Note: We're going to cut this inner loop off early since the matrix is symmetric
             for (j, state_j) in
                 enumerate(enumerate_multistate(num_sites, color_configuration))
@@ -489,13 +490,23 @@ function diagonalize_and_compute_observables(
         eigen_values, eigen_vectors = if use_cuda
             CUDA.CUSOLVER.Xsyevd!('V', 'U', CUDA.CuArray(H))
         else
+            # Hand off thread control to BLAS for diagonalization
+            # to make use of the substantially faster multi-threaded diagonalization routines
+            LinearAlgebra.BLAS.set_num_threads(nthreads())
+
             # Diagonalize the Hamiltonian block
+
+            # Create a symmetric view onto the part of H that we populated
+            # This allows us to use the more efficient symmetric diagonalization routines
             H_symmetric_view = LinearAlgebra.Symmetric(H, :U)
-            # Annoyingly, eigen() forces us to store all the eigenvectors
-            # in memory at once, but I can't find a good way around this
-            # Even the builtin `eigvals`/`eigvecs` functions are just
-            # wrappers around this.
-            eigen_data = LinearAlgebra.eigen(H_symmetric_view)
+
+            # Warning: eigen! will mangle H to save memory!
+            # Do not use H after this point.
+            # If it becomes necessary, use eigen() instead.
+            eigen_data = LinearAlgebra.eigen!(H_symmetric_view)
+
+            # Reset BLAS to single-threaded mode
+            LinearAlgebra.BLAS.set_num_threads(1)
             eigen_data.values, eigen_data.vectors
         end
 
@@ -509,8 +520,8 @@ function diagonalize_and_compute_observables(
 
         # Compute and store observables for each eigen-state
         offset = size_offset[config_idx]
-        for (i, (eigen_val, eigen_vec)) in
-            enumerate(zip(eigen_values, eachcol(eigen_vectors)))
+        @threads for (i, (eigen_val, eigen_vec)) in
+                     collect(enumerate(zip(eigen_values, eachcol(eigen_vectors))))
             @debug begin
                 "  eigen_val=$eigen_val, eigen_vec=$eigen_vec"
             end
