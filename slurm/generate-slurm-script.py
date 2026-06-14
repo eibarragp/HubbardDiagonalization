@@ -48,8 +48,8 @@ def input_or_default(input_value, default_value):
 	value = input(f'{input_value} [{default_value}]: ')
 	return default_value if len(value.strip()) == 0 else value
 
-def generate_script_from_template(filename, job_params):
-	template_file = os.path.join(NLCE_HOME, f'{PROJECT_ROOT}/slurm/template.slurm')
+def generate_script_from_template(filename, job_params, template='template.slurm'):
+	template_file = os.path.join(NLCE_HOME, f'{PROJECT_ROOT}/slurm/{template}')
 	with open(template_file, 'r') as f:
 		template = f.read()
 	for key, value in job_params.items():
@@ -270,7 +270,7 @@ if "U_inc" in resource_data:
 		**general_params
 	}
 
-	generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}_inc.slurm', inc_job_params)
+	generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}_inc.slurm', inc_job_params, template='inc_template.slurm')
 
 #endregion
 
