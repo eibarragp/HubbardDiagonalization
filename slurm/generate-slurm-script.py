@@ -281,7 +281,7 @@ job_run_script = ['#!/bin/bash\n\n']
 # If running with auto-increment, reset at the beginning of each run
 if "U_inc" in resource_data:
 	config_file = f'{PROJECT_ROOT}/SimulationConfig.toml'
-	job_run_script.append("if [[ $1 == 'no_reset' ]]\n")
+	job_run_script.append("if [[ $1 != 'no_reset' ]]\n")
 	job_run_script.append('then\n')
 	job_run_script.append(f"    U=$(grep 'U = ' {config_file} | awk '{{print $3}}')\n")
 	job_run_script.append(f'    sed -i "s/U = $U/U = {U_min}/" {config_file}\n')
