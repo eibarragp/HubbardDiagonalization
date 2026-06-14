@@ -302,7 +302,7 @@ for batch_num in range(batch_idx+1):
 job_run_script.append(f'merge_jobid=$(sbatch --dependency=afterok:$batch_{batch_idx}_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_merge.slurm)\n')
 
 if "U_inc" in resource_data:
-	job_run_script.append(f'sbatch --dependency=afterok:$merge_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/{job_name}_inc.slurm')
+	job_run_script.append(f'sbatch --dependency=afterok:$merge_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/{job_name}_inc.slurm\n')
 
 # Print the queued jobs
 job_run_script.append('squeue -u $USER\n')
