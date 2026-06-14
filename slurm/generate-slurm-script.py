@@ -287,6 +287,8 @@ if "U_inc" in resource_data:
 	job_run_script.append(f'    sed -i "s/U = $U/U = {U_min}/" {config_file}\n')
 	job_run_script.append('fi\n')
 
+global_sbatch_args = "--parsable --kill-on-invalid-dep=yes"
+
 for batch_num in range(batch_idx+1):
 	if batch_num == 0 or batch_num in mergeable_batches:
 		dependency = ''
@@ -297,12 +299,12 @@ for batch_num in range(batch_idx+1):
 	else:
 		dependency = f'--dependency=afterok:$batch_{batch_num-1}_jobid'
 
-	job_run_script.append(f'batch_{batch_num}_jobid=$(sbatch --parsable {dependency} --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_batch_{batch_num}.slurm)\n')
+	job_run_script.append(f'batch_{batch_num}_jobid=$(sbatch {global_sbatch_args} {dependency} {NLCE_HOME}/slurm/{job_name}_batch_{batch_num}.slurm)\n')
 
-job_run_script.append(f'merge_jobid=$(sbatch --dependency=afterok:$batch_{batch_idx}_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_merge.slurm)\n')
+job_run_script.append(f'merge_jobid=$(sbatch {global_sbatch_args} --dependency=afterok:$batch_{batch_idx}_jobid {NLCE_HOME}/slurm/{job_name}_merge.slurm)\n')
 
 if "U_inc" in resource_data:
-	job_run_script.append(f'sbatch --dependency=afterok:$merge_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/{job_name}_inc.slurm\n')
+	job_run_script.append(f'sbatch {global_sbatch_args} --dependency=afterok:$merge_jobid {NLCE_HOME}/{job_name}_inc.slurm\n')
 
 # Print the queued jobs
 job_run_script.append('squeue -u $USER\n')
