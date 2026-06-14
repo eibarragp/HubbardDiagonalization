@@ -31,6 +31,7 @@ function parse_cli()
         default = "output"
         "--cuda"
         help = "Use CUDA"
+        action = :store_true
         "--generate-plots"
         help = "Generate plots for the diagonalized cluster(s). Assumed 'true' when 'simple' is specified."
         action = :store_true
