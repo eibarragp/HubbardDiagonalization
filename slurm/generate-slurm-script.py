@@ -250,11 +250,42 @@ merge_job_params = {
 
 generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}_merge.slurm', merge_job_params)
 
+if "U_inc" in resource_data:
+	output_group = resource_data["U_inc"]["group_basename"]
+	U_step = resource_data["U_inc"]["U_step"]
+	U_min = resource_data["U_inc"]["U_min"]
+	U_max = resource_data["U_inc"]["U_max"]
+
+	# Make sure that the grouping done by mv doesn't move stuff we've already grouped
+	if output_group.startswith(job_name):
+		print(f"Error: Job name is too similar to group basename!")
+
+	inc_job_params = {
+		'job_name': f'NLCE_{job_name}_inc',
+		'log_file': f'{NLCE_HOME}/logs/{job_name}_inc_%j.out',
+		'output_group': output_group,
+		'output_name_base': job_name,  # Output directories all start with the job name
+		'U_step': U_step,
+		'U_max': U_max,
+		**general_params
+	}
+
+	generate_script_from_template(f'{NLCE_HOME}/slurm/{job_name}_inc.slurm', inc_job_params)
+
 #endregion
 
 #region Job Run Script Generation
 
 job_run_script = ['#!/bin/bash\n\n']
+
+# If running with auto-increment, reset at the beginning of each run
+if "U_inc" in resource_data:
+	config_file = f'{PROJECT_ROOT}/SimulationConfig.toml'
+	job_run_script.append("if [[ $1 == 'no_reset' ]]\n")
+	job_run_script.append('then\n')
+	job_run_script.append(f"    U=$(grep 'U = ' {config_file} | awk '{{print $3}}')\n")
+	job_run_script.append(f'    sed -i "s/U = $U/U = {U_min}/" {config_file}\n')
+	job_run_script.append('fi\n')
 
 for batch_num in range(batch_idx+1):
 	if batch_num == 0 or batch_num in mergeable_batches:
@@ -268,7 +299,10 @@ for batch_num in range(batch_idx+1):
 
 	job_run_script.append(f'batch_{batch_num}_jobid=$(sbatch --parsable {dependency} --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_batch_{batch_num}.slurm)\n')
 
-job_run_script.append(f'sbatch --dependency=afterok:$batch_{batch_idx}_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_merge.slurm\n')
+job_run_script.append(f'merge_jobid=$(sbatch --dependency=afterok:$batch_{batch_idx}_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/slurm/{job_name}_merge.slurm)\n')
+
+if "U_inc" in resource_data:
+	job_run_script.append(f'sbatch --dependency=afterok:$merge_jobid --kill-on-invalid-dep=yes {NLCE_HOME}/{job_name}_inc.slurm')
 
 # Print the queued jobs
 job_run_script.append('squeue -u $USER\n')
